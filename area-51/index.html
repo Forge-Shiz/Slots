@@ -92,15 +92,22 @@ body {
   border-radius: 20px;
   border: 3px solid rgba(0, 255, 136, 0.3);
   box-shadow: 0 0 30px rgba(0, 255, 136, 0.2), inset 0 0 50px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
 }
 .reels {
   display: flex;
   gap: 8px;
 }
-.reel {
+.reel-window {
+  overflow: visible;
+  height: 564px; /* 3 cells * 188px (180 + 8 gap) */
+  position: relative;
+}
+.reel-strip {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: relative;
 }
 .reel-cell {
   width: 180px;
@@ -112,7 +119,8 @@ body {
   align-items: center;
   justify-content: center;
   position: relative;
-  transition: all 0.3s ease;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 .reel-cell img {
   width: 160px;
@@ -123,6 +131,7 @@ body {
   border-color: #ffd700 !important;
   box-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
   animation: winPulse 0.5s ease infinite alternate;
+  z-index: 10;
 }
 .reel-cell.expanded {
   border-color: #ff00ff !important;
@@ -132,12 +141,6 @@ body {
   from { transform: scale(1); }
   to { transform: scale(1.08); }
 }
-@keyframes spinAnim {
-  0% { opacity: 0.5; transform: translateY(-10px); }
-  50% { opacity: 1; }
-  100% { opacity: 0.5; transform: translateY(10px); }
-}
-.spinning .reel-cell { animation: spinAnim 0.08s linear infinite; }
 
 /* Balance Display */
 .balance-display {
@@ -552,10 +555,10 @@ async function initGame() {
 function detectServer() {
   // Check if we're on the same server
   if (window.location.hostname === 'localhost') {
-    return 'http://localhost:8080';
+    return '';
   }
   // Use current host
-  return window.location.protocol + '//' + window.location.hostname + ':8080';
+  return '';
 }
 
 function parseScreen(scr) {
@@ -586,31 +589,40 @@ function randomScreen() {
 // ===========================================
 // RENDER FUNCTIONS
 // ===========================================
+function createCell(symId) {
+  const cellEl = document.createElement('div');
+  cellEl.className = 'reel-cell';
+
+  if (symId < 1 || symId > 10) symId = ((symId - 1) % 10) + 1;
+  const imgSrc = SYMBOLS[symId] || ('assets/symbols/' + symId + '.png');
+
+  const img = document.createElement('img');
+  img.src = imgSrc;
+  img.alt = 'Symbol ' + symId;
+
+  cellEl.appendChild(img);
+  return cellEl;
+}
+
 function renderReels() {
   reelsEl.innerHTML = '';
-  
+
   for (let col = 0; col < CONFIG.COLS; col++) {
-    const reelEl = document.createElement('div');
-    reelEl.className = 'reel';
-    reelEl.id = 'reel-' + col;
-    
+    const windowEl = document.createElement('div');
+    windowEl.className = 'reel-window';
+
+    const stripEl = document.createElement('div');
+    stripEl.className = 'reel-strip';
+
     for (let row = 0; row < CONFIG.ROWS; row++) {
-      const cellEl = document.createElement('div');
-      cellEl.className = 'reel-cell';
-      cellEl.id = `cell-${col}-${row}`;
-      
       const symId = state.screen[col][row];
-      const imgSrc = SYMBOLS[symId] || (symId + '.png');
-      
-      const img = document.createElement('img');
-      img.src = imgSrc;
-      img.alt = 'Symbol ' + symId;
-      
-      cellEl.appendChild(img);
-      reelEl.appendChild(cellEl);
+      const cellEl = createCell(symId);
+      cellEl.id = `cell-${col}-${row}`;
+      stripEl.appendChild(cellEl);
     }
-    
-    reelsEl.appendChild(reelEl);
+
+    windowEl.appendChild(stripEl);
+    reelsEl.appendChild(windowEl);
   }
 }
 
@@ -686,19 +698,16 @@ async function spin() {
     alert('Insufficient balance!');
     return;
   }
-  
+
   state.spinning = true;
   spinBtn.disabled = true;
   state.lastWin = 0;
   lastWinEl.textContent = '0.00';
-  
+
   // Clear previous wins
   document.querySelectorAll('.winner').forEach(el => el.classList.remove('winner'));
   document.querySelectorAll('.expanded').forEach(el => el.classList.remove('expanded'));
-  
-  // Start spin animation
-  reelsEl.classList.add('spinning');
-  
+
   // Deduct bet (unless free spin)
   if (state.freeSpins <= 0) {
     state.balance -= state.bet;
@@ -706,72 +715,121 @@ async function spin() {
     state.freeSpins--;
   }
   updateUI();
-  
+
   // Call API
   const result = await api('/slot/spin', {
     gid: state.gid,
     bet: state.bet / 10 // API uses bet per line
   });
-  
-  // Simulate spin time
-  await new Promise(r => setTimeout(r, 800));
-  
-  reelsEl.classList.remove('spinning');
+
+  // Parse new screen before animation
+  let newScreen;
+  if (result) {
+    if (result.game && result.game.scr) {
+      newScreen = parseScreen(result.game.scr);
+    } else if (result.scr) {
+      newScreen = parseScreen(result.scr);
+    } else {
+      newScreen = randomScreen();
+    }
+  } else {
+    newScreen = randomScreen();
+  }
+
+  // Spin animation using translateY (like Florida Man)
+  const windows = document.querySelectorAll('.reel-window');
+  const EXTRA = 30;
+  const CELL = 188; // 180px cell + 8px gap
+  const spinDistance = EXTRA * CELL;
+
+  // Build strips with final symbols at top + extra random symbols below
+  windows.forEach((w, col) => {
+    const strip = w.querySelector('.reel-strip');
+    strip.innerHTML = '';
+
+    // Add final symbols (what we'll land on)
+    for (let row = 0; row < CONFIG.ROWS; row++) {
+      const cellEl = createCell(newScreen[col][row]);
+      cellEl.id = `cell-${col}-${row}`;
+      strip.appendChild(cellEl);
+    }
+
+    // Add extra random symbols below (these scroll past)
+    for (let i = 0; i < EXTRA; i++) {
+      strip.appendChild(createCell(Math.floor(Math.random() * 10) + 1));
+    }
+
+    // Start position: show extra symbols (negative offset)
+    strip.style.transition = 'none';
+    strip.style.transform = 'translateY(-' + spinDistance + 'px)';
+  });
+
+  // Force reflow
+  document.body.offsetHeight;
+
+  // Animate each reel with staggered timing
+  windows.forEach((w, col) => {
+    const strip = w.querySelector('.reel-strip');
+    const delay = col * 200;
+    const duration = 1500 + col * 200;
+
+    setTimeout(() => {
+      strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(0.15, 0.8, 0.3, 1)';
+      strip.style.transform = 'translateY(0)';
+    }, delay);
+  });
+
+  // Wait for all animations to complete
+  const totalTime = 1500 + 4 * 200 + 500;
+  await new Promise(r => setTimeout(r, totalTime));
+
+  // Update state with new screen
+  state.screen = newScreen;
   
   if (result) {
     console.log('Spin result:', result);
-    
-    // Parse screen
-    if (result.game && result.game.scr) {
-      state.screen = parseScreen(result.game.scr);
-    } else if (result.scr) {
-      state.screen = parseScreen(result.scr);
-    }
-    
+    console.log('result.gain:', result.gain);
+    console.log('result.game:', JSON.stringify(result.game));
+    console.log('result.wins:', result.wins);
+
     // Update balance
     if (result.wallet !== undefined) {
       state.balance = result.wallet;
     }
-    
+
+    // Get win amount directly (like Florida Man does)
+    const totalWin = result.gain || (result.game && result.game.gain) || 0;
+    const wins = result.wins || (result.game && result.game.wins) || [];
+
+    console.log('totalWin:', totalWin);
+    console.log('wins array:', wins);
+
     // Check for free spins trigger or remaining
     if (result.game && result.game.fs !== undefined) {
       if (result.game.fs > 0 && state.freeSpins === 0) {
         // New free spins triggered!
         state.freeSpins = result.game.fs;
-        // Pick expanding symbol (in real Book of Ra, this is random)
         state.expandingSymbol = pickExpandingSymbol(result);
       } else if (result.game.fs > 0) {
         state.freeSpins = result.game.fs;
       }
     }
-    
-    // Calculate win
-    let totalWin = 0;
-    if (result.game && result.game.wins) {
-      result.game.wins.forEach(w => {
-        totalWin += (w.pay || 0) * (w.mp || 1);
-      });
-      highlightWinners(result.game.wins);
+
+    // Highlight winners
+    if (wins.length > 0) {
+      highlightWinners(wins);
     }
-    
+
     // Check for free spins award in wins
-    if (result.game && result.game.wins) {
-      result.game.wins.forEach(w => {
-        if (w.fs && w.fs > 0) {
-          state.freeSpins = w.fs;
-          state.expandingSymbol = pickExpandingSymbol(result);
-        }
-      });
-    }
-    
+    wins.forEach(w => {
+      if (w.fs && w.fs > 0) {
+        state.freeSpins = w.fs;
+        state.expandingSymbol = pickExpandingSymbol(result);
+      }
+    });
+
     showWin(totalWin);
-    renderReels();
     updateUI();
-    
-  } else {
-    // Demo mode - random screen
-    state.screen = randomScreen();
-    renderReels();
   }
   
   state.spinning = false;
