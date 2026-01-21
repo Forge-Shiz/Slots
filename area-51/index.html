@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Area 51 Files</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #000;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+.game-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  background: url('assets/bg.png') center/cover no-repeat;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: background 0.5s ease;
+}
+.game-container.freespins {
+  background: url('assets/bg-freespins.png') center/cover no-repeat;
+}
+
+/* Logo */
+.logo {
+  width: 80%;
+  max-width: 350px;
+  margin-top: 20px;
+  filter: drop-shadow(0 0 20px rgba(0, 255, 136, 0.5));
+}
+
+/* Free Spins Banner */
+.freespins-banner {
+  display: none;
+  position: absolute;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 2px solid #00ff88;
+  border-radius: 20px;
+  padding: 10px 30px;
+  color: #00ff88;
+  font-size: 18px;
+  font-weight: bold;
+  text-shadow: 0 0 10px #00ff88;
+  z-index: 100;
+  animation: pulse 1s infinite;
+}
+.freespins-banner.active { display: block; }
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.5); }
+  50% { box-shadow: 0 0 40px rgba(0, 255, 136, 0.8); }
+}
+
+/* Expanding Symbol Display */
+.expanding-symbol {
+  display: none;
+  position: absolute;
+  top: 140px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid #ffd700;
+  border-radius: 15px;
+  padding: 8px 20px;
+  color: #ffd700;
+  font-size: 14px;
+  z-index: 100;
+  align-items: center;
+  gap: 10px;
+}
+.expanding-symbol.active { display: flex; }
+.expanding-symbol img { width: 100px; height: 100px; }
+
+/* Reels Container */
+.reels-container {
+  margin-top: auto;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 20px;
+  border: 3px solid rgba(0, 255, 136, 0.3);
+  box-shadow: 0 0 30px rgba(0, 255, 136, 0.2), inset 0 0 50px rgba(0, 0, 0, 0.5);
+}
+.reels {
+  display: flex;
+  gap: 8px;
+}
+.reel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.reel-cell {
+  width: 180px;
+  height: 180px;
+  background: rgba(20, 20, 40, 0.8);
+  border-radius: 10px;
+  border: 2px solid rgba(0, 255, 136, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.3s ease;
+}
+.reel-cell img {
+  width: 160px;
+  height: 160px;
+  object-fit: contain;
+}
+.reel-cell.winner {
+  border-color: #ffd700 !important;
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+  animation: winPulse 0.5s ease infinite alternate;
+}
+.reel-cell.expanded {
+  border-color: #ff00ff !important;
+  box-shadow: 0 0 30px rgba(255, 0, 255, 0.8);
+}
+@keyframes winPulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
+}
+@keyframes spinAnim {
+  0% { opacity: 0.5; transform: translateY(-10px); }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; transform: translateY(10px); }
+}
+.spinning .reel-cell { animation: spinAnim 0.08s linear infinite; }
+
+/* Balance Display */
+.balance-display {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 350px;
+  margin-top: 15px;
+  padding: 0 10px;
+}
+.balance-item {
+  text-align: center;
+  color: #fff;
+}
+.balance-item .label {
+  font-size: 12px;
+  color: #888;
+  text-transform: uppercase;
+}
+.balance-item .value {
+  font-size: 22px;
+  font-weight: bold;
+  color: #00ff88;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+/* Win Display */
+.win-display {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 100%);
+  border: 3px solid #ffd700;
+  border-radius: 20px;
+  padding: 30px 50px;
+  z-index: 200;
+  text-align: center;
+  animation: winAppear 0.3s ease;
+}
+.win-display.active { display: block; }
+@keyframes winAppear {
+  from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+.win-display .win-label {
+  color: #ffd700;
+  font-size: 24px;
+  font-weight: bold;
+  text-shadow: 0 0 20px #ffd700;
+}
+.win-display .win-amount {
+  color: #fff;
+  font-size: 48px;
+  font-weight: bold;
+  text-shadow: 0 0 30px #00ff88;
+  margin-top: 10px;
+}
+
+/* Spin Button */
+.spin-btn {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 4px solid #00ff88;
+  background: radial-gradient(circle at 30% 30%, #2a2a4a, #1a1a2e);
+  color: #00ff88;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 20px;
+  box-shadow: 0 0 30px rgba(0, 255, 136, 0.4), inset 0 0 20px rgba(0, 255, 136, 0.1);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.spin-btn:hover {
+  box-shadow: 0 0 50px rgba(0, 255, 136, 0.6);
+  transform: scale(1.05);
+}
+.spin-btn:active { transform: scale(0.95); }
+.spin-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.spin-btn svg {
+  width: 40px;
+  height: 40px;
+  fill: #00ff88;
+}
+
+/* Control Buttons */
+.controls {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+  margin-bottom: 30px;
+}
+.ctrl-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 255, 136, 0.5);
+  background: rgba(20, 20, 40, 0.8);
+  color: #00ff88;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+.ctrl-btn:hover {
+  background: rgba(0, 255, 136, 0.2);
+  border-color: #00ff88;
+}
+.ctrl-btn.active {
+  background: rgba(0, 255, 136, 0.3);
+  border-color: #00ff88;
+}
+
+/* Bet Popup */
+.popup-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 300;
+  justify-content: center;
+  align-items: center;
+}
+.popup-overlay.active { display: flex; }
+.popup {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 2px solid #00ff88;
+  border-radius: 20px;
+  padding: 30px;
+  max-width: 350px;
+  width: 90%;
+  color: #fff;
+}
+.popup h2 {
+  color: #00ff88;
+  text-align: center;
+  margin-bottom: 20px;
+}
+.popup-close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+}
+.bet-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.bet-option {
+  padding: 15px;
+  background: rgba(0, 255, 136, 0.1);
+  border: 2px solid rgba(0, 255, 136, 0.3);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+}
+.bet-option:hover, .bet-option.selected {
+  background: rgba(0, 255, 136, 0.3);
+  border-color: #00ff88;
+}
+
+/* Info Popup */
+.info-content {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.info-content h3 {
+  color: #ffd700;
+  margin: 15px 0 10px;
+}
+.info-content p {
+  color: #ccc;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+.info-content .symbol-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  margin-bottom: 5px;
+}
+.info-content .symbol-row img {
+  width: 40px;
+  height: 40px;
+}
+</style>
+</head>
+<body>
+
+<div class="game-container" id="gameContainer">
+  <img src="assets/logo.png" alt="Area 51 Files" class="logo">
+  
+  <div class="freespins-banner" id="freespinsBanner">
+    🛸 FREE SPINS: <span id="fsCount">0</span> LEFT
+  </div>
+  
+  <div class="expanding-symbol" id="expandingSymbol">
+    <span>EXPANDING:</span>
+    <img id="expandingImg" src="assets/symbols/1.png">
+  </div>
+  
+  <div class="reels-container">
+    <div class="reels" id="reels"></div>
+  </div>
+  
+  <div class="balance-display">
+    <div class="balance-item">
+      <div class="label">Balance</div>
+      <div class="value" id="balance">1000.00</div>
+    </div>
+    <div class="balance-item">
+      <div class="label">Win</div>
+      <div class="value" id="lastWin">0.00</div>
+    </div>
+    <div class="balance-item">
+      <div class="label">Bet</div>
+      <div class="value" id="betDisplay">9.00</div>
+    </div>
+  </div>
+  
+  <button class="spin-btn" id="spinBtn">
+    <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+  </button>
+  
+  <div class="controls">
+    <button class="ctrl-btn" id="betBtn" title="Change Bet">💰</button>
+    <button class="ctrl-btn" id="soundBtn" title="Toggle Sound">🔊</button>
+    <button class="ctrl-btn" id="infoBtn" title="Game Info">ℹ️</button>
+  </div>
+  
+  <div class="win-display" id="winDisplay">
+    <div class="win-label">YOU WIN</div>
+    <div class="win-amount" id="winAmount">0.00</div>
+  </div>
+</div>
+
+<!-- Bet Popup -->
+<div class="popup-overlay" id="betPopup">
+  <div class="popup">
+    <h2>SELECT BET</h2>
+    <div class="bet-options" id="betOptions"></div>
+    <button class="ctrl-btn" style="margin: 20px auto 0; display: block;" onclick="closeBetPopup()">✓</button>
+  </div>
+</div>
+
+<!-- Info Popup -->
+<div class="popup-overlay" id="infoPopup">
+  <div class="popup">
+    <h2>🛸 AREA 51 FILES</h2>
+    <div class="info-content">
+      <h3>How to Play</h3>
+      <p>Match 3 or more symbols from left to right on the 10 paylines to win!</p>
+      
+      <h3>🔮 Classified File (Scatter)</h3>
+      <p>Land 3+ Classified Files anywhere to trigger <strong>10 FREE SPINS!</strong></p>
+      <p>A random symbol becomes the <strong>EXPANDING SYMBOL</strong> during free spins - it expands to fill the entire reel when it can create a win!</p>
+      
+      <h3>Symbols (Highest to Lowest)</h3>
+      <div class="symbol-row"><img src="assets/symbols/1.png"><span>Grey Alien - Premium</span></div>
+      <div class="symbol-row"><img src="assets/symbols/2.png"><span>G-Man - Premium</span></div>
+      <div class="symbol-row"><img src="assets/symbols/3.png"><span>Flying Saucer - High</span></div>
+      <div class="symbol-row"><img src="assets/symbols/4.png"><span>Ray Gun - High</span></div>
+      <div class="symbol-row"><img src="assets/symbols/5.png"><span>Classified File - SCATTER</span></div>
+      <div class="symbol-row"><img src="assets/symbols/6.png"><span>Atom - Medium</span></div>
+      <div class="symbol-row"><img src="assets/symbols/7.png"><span>Rocket - Medium</span></div>
+      <div class="symbol-row"><img src="assets/symbols/8.png"><span>TV Static - Low</span></div>
+      <div class="symbol-row"><img src="assets/symbols/9.png"><span>Tinfoil Hat - Low</span></div>
+      <div class="symbol-row"><img src="assets/symbols/10.png"><span>Cow - Low</span></div>
+    </div>
+    <button class="ctrl-btn" style="margin: 20px auto 0; display: block;" onclick="closeInfoPopup()">✓</button>
+  </div>
+</div>
+
+<script>
+// ===========================================
+// CONFIGURATION
+// ===========================================
+const CONFIG = {
+  API_URL: '', // Will be set on init
+  GAME_ALIAS: 'Novomatic/Book of Ra Deluxe',
+  CLUB_ID: 1,
+  USER_ID: 3,
+  TOKEN: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzbG90b3BvbCIsImV4cCI6NDg2NzQ0NzYxNywibmJmIjoxNzA2NjQ3NjE3LCJ1aWQiOjN9.6g2Hig9ErG8IbvzkPppry5F8HJsMunZPwuQzmetGh4c',
+  COLS: 5,
+  ROWS: 3,
+  BETS: [0.90, 1.80, 3.60, 9.00, 18.00, 36.00, 90.00],
+  SCATTER_ID: 10 // Book symbol in Book of Ra
+};
+
+// Symbol mapping: API symbol ID -> our image file
+const SYMBOLS = {
+  1: 'assets/symbols/6.png',   // A -> Atom
+  2: 'assets/symbols/7.png',   // K -> Rocket  
+  3: 'assets/symbols/8.png',   // Q -> TV Static
+  4: 'assets/symbols/9.png',   // J -> Tinfoil Hat
+  5: 'assets/symbols/10.png',  // 10 -> Cow
+  6: 'assets/symbols/4.png',   // Scarab -> Ray Gun
+  7: 'assets/symbols/3.png',   // Idol -> UFO
+  8: 'assets/symbols/2.png',   // Pharaoh -> G-Man
+  9: 'assets/symbols/1.png',   // Explorer -> Alien
+  10: 'assets/symbols/5.png'   // Book (scatter) -> Classified File
+};
+
+// ===========================================
+// GAME STATE
+// ===========================================
+let state = {
+  gid: null,
+  balance: 1000,
+  bet: 9.00,
+  betIndex: 3,
+  spinning: false,
+  screen: null,
+  freeSpins: 0,
+  expandingSymbol: null,
+  soundOn: true,
+  lastWin: 0
+};
+
+// ===========================================
+// DOM ELEMENTS
+// ===========================================
+const $ = id => document.getElementById(id);
+const reelsEl = $('reels');
+const spinBtn = $('spinBtn');
+const balanceEl = $('balance');
+const betDisplayEl = $('betDisplay');
+const lastWinEl = $('lastWin');
+const winDisplay = $('winDisplay');
+const winAmount = $('winAmount');
+const freespinsBanner = $('freespinsBanner');
+const fsCountEl = $('fsCount');
+const expandingSymbolEl = $('expandingSymbol');
+const expandingImg = $('expandingImg');
+const gameContainer = $('gameContainer');
+
+// ===========================================
+// API FUNCTIONS
+// ===========================================
+async function api(endpoint, data = null) {
+  try {
+    const response = await fetch(CONFIG.API_URL + endpoint, {
+      method: data ? 'POST' : 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + CONFIG.TOKEN
+      },
+      body: data ? JSON.stringify(data) : null
+    });
+    return await response.json();
+  } catch (err) {
+    console.error('API Error:', err);
+    return null;
+  }
+}
+
+async function initGame() {
+  // Try to detect server
+  const serverUrl = detectServer();
+  CONFIG.API_URL = serverUrl;
+  
+  const result = await api('/game/new', {
+    cid: CONFIG.CLUB_ID,
+    uid: CONFIG.USER_ID,
+    alias: CONFIG.GAME_ALIAS
+  });
+  
+  if (result && result.gid) {
+    state.gid = result.gid;
+    state.balance = result.wallet || 1000;
+    
+    // Parse initial screen
+    if (result.game && result.game.scr) {
+      state.screen = parseScreen(result.game.scr);
+    } else {
+      state.screen = randomScreen();
+    }
+    
+    updateUI();
+    renderReels();
+    console.log('Game initialized:', result);
+  } else {
+    console.error('Failed to init game:', result);
+    // Use demo mode
+    state.screen = randomScreen();
+    renderReels();
+  }
+}
+
+function detectServer() {
+  // Check if we're on the same server
+  if (window.location.hostname === 'localhost') {
+    return 'http://localhost:8080';
+  }
+  // Use current host
+  return window.location.protocol + '//' + window.location.hostname + ':8080';
+}
+
+function parseScreen(scr) {
+  // API returns array of columns, each column has ROWS symbols
+  if (!scr || !Array.isArray(scr)) return randomScreen();
+  
+  let screen = [];
+  for (let col = 0; col < CONFIG.COLS; col++) {
+    screen[col] = [];
+    for (let row = 0; row < CONFIG.ROWS; row++) {
+      screen[col][row] = scr[col] ? scr[col][row] : Math.floor(Math.random() * 10) + 1;
+    }
+  }
+  return screen;
+}
+
+function randomScreen() {
+  let screen = [];
+  for (let col = 0; col < CONFIG.COLS; col++) {
+    screen[col] = [];
+    for (let row = 0; row < CONFIG.ROWS; row++) {
+      screen[col][row] = Math.floor(Math.random() * 10) + 1;
+    }
+  }
+  return screen;
+}
+
+// ===========================================
+// RENDER FUNCTIONS
+// ===========================================
+function renderReels() {
+  reelsEl.innerHTML = '';
+  
+  for (let col = 0; col < CONFIG.COLS; col++) {
+    const reelEl = document.createElement('div');
+    reelEl.className = 'reel';
+    reelEl.id = 'reel-' + col;
+    
+    for (let row = 0; row < CONFIG.ROWS; row++) {
+      const cellEl = document.createElement('div');
+      cellEl.className = 'reel-cell';
+      cellEl.id = `cell-${col}-${row}`;
+      
+      const symId = state.screen[col][row];
+      const imgSrc = SYMBOLS[symId] || (symId + '.png');
+      
+      const img = document.createElement('img');
+      img.src = imgSrc;
+      img.alt = 'Symbol ' + symId;
+      
+      cellEl.appendChild(img);
+      reelEl.appendChild(cellEl);
+    }
+    
+    reelsEl.appendChild(reelEl);
+  }
+}
+
+function updateUI() {
+  balanceEl.textContent = state.balance.toFixed(2);
+  betDisplayEl.textContent = state.bet.toFixed(2);
+  lastWinEl.textContent = state.lastWin.toFixed(2);
+  
+  // Free spins mode
+  if (state.freeSpins > 0) {
+    gameContainer.classList.add('freespins');
+    freespinsBanner.classList.add('active');
+    fsCountEl.textContent = state.freeSpins;
+    
+    if (state.expandingSymbol) {
+      expandingSymbolEl.classList.add('active');
+      expandingImg.src = SYMBOLS[state.expandingSymbol] || (state.expandingSymbol + '.png');
+    }
+  } else {
+    gameContainer.classList.remove('freespins');
+    freespinsBanner.classList.remove('active');
+    expandingSymbolEl.classList.remove('active');
+    state.expandingSymbol = null;
+  }
+}
+
+function showWin(amount) {
+  state.lastWin = amount;
+  lastWinEl.textContent = amount.toFixed(2);
+  
+  if (amount > 0) {
+    winAmount.textContent = amount.toFixed(2);
+    winDisplay.classList.add('active');
+    
+    setTimeout(() => {
+      winDisplay.classList.remove('active');
+    }, 2000);
+  }
+}
+
+function highlightWinners(wins) {
+  // Clear previous highlights
+  document.querySelectorAll('.winner').forEach(el => el.classList.remove('winner'));
+  document.querySelectorAll('.expanded').forEach(el => el.classList.remove('expanded'));
+  
+  if (!wins || wins.length === 0) return;
+  
+  wins.forEach(win => {
+    if (win.xy && win.xy.length > 0) {
+      win.xy.forEach(coord => {
+        const col = coord[0] - 1;
+        const row = coord[1] - 1;
+        const cell = $(`cell-${col}-${row}`);
+        if (cell) {
+          cell.classList.add('winner');
+          
+          // Check if this is an expanding symbol
+          if (state.expandingSymbol && win.sym === state.expandingSymbol) {
+            cell.classList.add('expanded');
+          }
+        }
+      });
+    }
+  });
+}
+
+// ===========================================
+// SPIN LOGIC
+// ===========================================
+async function spin() {
+  if (state.spinning) return;
+  if (state.freeSpins <= 0 && state.balance < state.bet) {
+    alert('Insufficient balance!');
+    return;
+  }
+  
+  state.spinning = true;
+  spinBtn.disabled = true;
+  state.lastWin = 0;
+  lastWinEl.textContent = '0.00';
+  
+  // Clear previous wins
+  document.querySelectorAll('.winner').forEach(el => el.classList.remove('winner'));
+  document.querySelectorAll('.expanded').forEach(el => el.classList.remove('expanded'));
+  
+  // Start spin animation
+  reelsEl.classList.add('spinning');
+  
+  // Deduct bet (unless free spin)
+  if (state.freeSpins <= 0) {
+    state.balance -= state.bet;
+  } else {
+    state.freeSpins--;
+  }
+  updateUI();
+  
+  // Call API
+  const result = await api('/slot/spin', {
+    gid: state.gid,
+    bet: state.bet / 10 // API uses bet per line
+  });
+  
+  // Simulate spin time
+  await new Promise(r => setTimeout(r, 800));
+  
+  reelsEl.classList.remove('spinning');
+  
+  if (result) {
+    console.log('Spin result:', result);
+    
+    // Parse screen
+    if (result.game && result.game.scr) {
+      state.screen = parseScreen(result.game.scr);
+    } else if (result.scr) {
+      state.screen = parseScreen(result.scr);
+    }
+    
+    // Update balance
+    if (result.wallet !== undefined) {
+      state.balance = result.wallet;
+    }
+    
+    // Check for free spins trigger or remaining
+    if (result.game && result.game.fs !== undefined) {
+      if (result.game.fs > 0 && state.freeSpins === 0) {
+        // New free spins triggered!
+        state.freeSpins = result.game.fs;
+        // Pick expanding symbol (in real Book of Ra, this is random)
+        state.expandingSymbol = pickExpandingSymbol(result);
+      } else if (result.game.fs > 0) {
+        state.freeSpins = result.game.fs;
+      }
+    }
+    
+    // Calculate win
+    let totalWin = 0;
+    if (result.game && result.game.wins) {
+      result.game.wins.forEach(w => {
+        totalWin += (w.pay || 0) * (w.mp || 1);
+      });
+      highlightWinners(result.game.wins);
+    }
+    
+    // Check for free spins award in wins
+    if (result.game && result.game.wins) {
+      result.game.wins.forEach(w => {
+        if (w.fs && w.fs > 0) {
+          state.freeSpins = w.fs;
+          state.expandingSymbol = pickExpandingSymbol(result);
+        }
+      });
+    }
+    
+    showWin(totalWin);
+    renderReels();
+    updateUI();
+    
+  } else {
+    // Demo mode - random screen
+    state.screen = randomScreen();
+    renderReels();
+  }
+  
+  state.spinning = false;
+  spinBtn.disabled = false;
+  
+  // Auto-spin if free spins remain
+  if (state.freeSpins > 0) {
+    setTimeout(() => spin(), 1500);
+  }
+}
+
+function pickExpandingSymbol(result) {
+  // In real Book of Ra, the expanding symbol is randomly chosen
+  // We'll pick one of the non-scatter symbols
+  const symbols = [1, 2, 3, 4, 5, 6, 7, 8, 9]; // Exclude 10 (scatter)
+  return symbols[Math.floor(Math.random() * symbols.length)];
+}
+
+// ===========================================
+// BET CONTROLS
+// ===========================================
+function openBetPopup() {
+  const betOptions = $('betOptions');
+  betOptions.innerHTML = '';
+  
+  CONFIG.BETS.forEach((bet, index) => {
+    const btn = document.createElement('button');
+    btn.className = 'bet-option' + (index === state.betIndex ? ' selected' : '');
+    btn.textContent = bet.toFixed(2);
+    btn.onclick = () => selectBet(index);
+    betOptions.appendChild(btn);
+  });
+  
+  $('betPopup').classList.add('active');
+}
+
+function closeBetPopup() {
+  $('betPopup').classList.remove('active');
+}
+
+function selectBet(index) {
+  state.betIndex = index;
+  state.bet = CONFIG.BETS[index];
+  updateUI();
+  
+  // Update selected state
+  document.querySelectorAll('.bet-option').forEach((btn, i) => {
+    btn.classList.toggle('selected', i === index);
+  });
+}
+
+// ===========================================
+// INFO POPUP
+// ===========================================
+function openInfoPopup() {
+  $('infoPopup').classList.add('active');
+}
+
+function closeInfoPopup() {
+  $('infoPopup').classList.remove('active');
+}
+
+// ===========================================
+// SOUND CONTROLS
+// ===========================================
+function toggleSound() {
+  state.soundOn = !state.soundOn;
+  $('soundBtn').textContent = state.soundOn ? '🔊' : '🔇';
+  $('soundBtn').classList.toggle('active', state.soundOn);
+}
+
+// ===========================================
+// EVENT LISTENERS
+// ===========================================
+spinBtn.addEventListener('click', spin);
+$('betBtn').addEventListener('click', openBetPopup);
+$('soundBtn').addEventListener('click', toggleSound);
+$('infoBtn').addEventListener('click', openInfoPopup);
+
+// Close popups on overlay click
+$('betPopup').addEventListener('click', e => {
+  if (e.target === $('betPopup')) closeBetPopup();
+});
+$('infoPopup').addEventListener('click', e => {
+  if (e.target === $('infoPopup')) closeInfoPopup();
+});
+
+// Keyboard support
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !state.spinning) {
+    e.preventDefault();
+    spin();
+  }
+});
+
+// ===========================================
+// INIT
+// ===========================================
+initGame();
+</script>
+
+</body>
+</html>

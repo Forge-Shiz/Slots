@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Florida Man Slots</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body{background:url('assets/backgrounds/bck.png') center/cover no-repeat fixed;margin:0}
+.symbol-img{width:100%;height:100%;object-fit:contain}
+.reel-window{overflow:visible;height:426px;position:relative;border-radius:12px}
+.reels-container{overflow:hidden;padding:8px;margin:-8px}
+.reel-strip{display:flex;flex-direction:column;gap:8px;position:relative}
+.reel-cell{background:rgba(0,0,0,0.5);border-radius:12px;border:3px solid rgba(255,200,0,0.3);width:130px;height:130px;flex-shrink:0;position:relative;box-sizing:border-box}
+.winner-cell{
+  border:4px solid #ffd700 !important;
+  box-shadow:0 0 30px rgba(255,215,0,0.9), inset 0 0 20px rgba(255,215,0,0.4);
+  animation:pulse 0.5s ease-in-out infinite alternate;
+  z-index:10;
+}
+@keyframes pulse{
+  from{box-shadow:0 0 20px rgba(255,215,0,0.7), inset 0 0 15px rgba(255,215,0,0.3)}
+  to{box-shadow:0 0 50px rgba(255,215,0,1), inset 0 0 30px rgba(255,215,0,0.5)}
+}
+.bet-panel{background:url('assets/betpanel.png') center/100% 100% no-repeat;width:750px;height:160px;display:flex;align-items:center;justify-content:center}
+.win-area{height:80px;display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body class="text-white">
+<audio id="bgm" loop src="assets/Floridamansong.mp3"></audio>
+<audio id="spin-sound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_7a9080e4a0.mp3"></audio>
+<audio id="win-sound" src="https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3"></audio>
+
+<div class="min-h-screen bg-black/30 flex flex-col">
+<header class="text-center pt-2">
+<img src="assets/logo.png" alt="Florida Man Slots" class="mx-auto h-40 object-contain">
+<button id="sound-btn" onclick="toggleSound()" class="px-4 py-1 bg-gray-800/80 rounded text-sm">🔇 Sound OFF</button>
+</header>
+
+<div class="flex justify-center">
+<div class="bg-black/60 rounded-2xl p-5 border-2 border-yellow-600/50">
+<div class="reels-container">
+<div id="reels" class="flex gap-3"></div>
+</div>
+</div>
+</div>
+
+<div class="win-area">
+<div id="win-display" class="hidden">
+<div class="inline-block bg-black/80 border-2 border-yellow-500 rounded-xl px-12 py-3">
+<div class="text-yellow-400 text-4xl font-black" id="win-amount">$0</div>
+</div>
+</div>
+</div>
+
+<div class="flex justify-center">
+<div class="bet-panel">
+<div class="flex items-center justify-center gap-8">
+<div class="flex items-center gap-2">
+<button onclick="changeBet(-10)" class="w-10 h-10 rounded-lg bg-black/50 border border-yellow-600/50 text-lg font-bold">-</button>
+<div class="w-14 text-center"><div class="text-xs text-yellow-200/60">BET</div><div id="bet-display" class="text-xl font-bold text-yellow-400">5</div></div>
+<button onclick="changeBet(10)" class="w-10 h-10 rounded-lg bg-black/50 border border-yellow-600/50 text-lg font-bold">+</button>
+</div>
+<button id="spin-btn" onclick="spin()" class="w-20 h-20 rounded-full bg-gradient-to-br from-yellow-500 to-orange-600 text-xl font-black border-4 border-yellow-300/50 hover:scale-105 transition-transform disabled:opacity-50">SPIN</button>
+<div class="flex items-center gap-2">
+<button onclick="changeLines(-1)" class="w-10 h-10 rounded-lg bg-black/50 border border-yellow-600/50 text-lg font-bold">-</button>
+<div class="w-14 text-center"><div class="text-xs text-yellow-200/60">LINES</div><div id="lines-display" class="text-xl font-bold text-yellow-400">5</div></div>
+<button onclick="changeLines(1)" class="w-10 h-10 rounded-lg bg-black/50 border border-yellow-600/50 text-lg font-bold">+</button>
+</div>
+</div>
+</div>
+</div>
+
+<div class="flex justify-center gap-16 py-3">
+<div class="text-center bg-black/50 px-6 py-2 rounded-lg"><div class="text-yellow-200/60 text-xs">BALANCE</div><div id="balance" class="text-3xl font-bold text-green-400">0</div></div>
+<div class="text-center bg-black/50 px-6 py-2 rounded-lg"><div class="text-yellow-200/60 text-xs">BET</div><div id="total-bet" class="text-3xl font-bold text-yellow-400">50</div></div>
+<div class="text-center bg-black/50 px-6 py-2 rounded-lg"><div class="text-yellow-200/60 text-xs">WIN</div><div id="last-win" class="text-3xl font-bold text-gray-500">0</div></div>
+</div>
+</div>
+
+<script>
+const SYM={1:'assets/symbols/1.png',2:'assets/symbols/2.png',3:'assets/symbols/3.png',4:'assets/symbols/4.png',5:'assets/symbols/5.png',6:'assets/symbols/6.png',7:'assets/symbols/7.png',8:'assets/symbols/8.png'};
+const TOK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzbG90b3BvbCIsImV4cCI6NDg2NzQ0NzYxNywibmJmIjoxNzA2NjQ3NjE3LCJ1aWQiOjN9.6g2Hig9ErG8IbvzkPppry5F8HJsMunZPwuQzmetGh4c';
+let S={gid:null,bal:1000,bet:5,lines:5,spinning:false,scr:null,sound:false};
+
+async function api(e,d=null){try{const r=await fetch(e,{method:d?'POST':'GET',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOK},body:d?JSON.stringify(d):null});return await r.json()}catch(err){console.log(err);return null}}
+
+function toggleSound(){
+S.sound=!S.sound;
+const b=document.getElementById('bgm');
+const btn=document.getElementById('sound-btn');
+if(S.sound){b.play();btn.textContent='🔊 Sound ON'}
+else{b.pause();btn.textContent='🔇 Sound OFF'}
+}
+
+function playSound(id){if(S.sound){const snd=document.getElementById(id);if(snd){snd.currentTime=0;snd.play().catch(()=>{})}}}
+
+function showWin(amount){
+document.getElementById('win-amount').textContent='$'+amount;
+document.getElementById('win-display').classList.remove('hidden');
+playSound('win-sound');
+setTimeout(()=>{document.getElementById('win-display').classList.add('hidden')},3000);
+}
+
+function highlightWinners(wins){
+document.querySelectorAll('.winner-cell').forEach(c=>c.classList.remove('winner-cell'));
+const windows=document.querySelectorAll('.reel-window');
+if(wins&&wins.length>0){
+wins.forEach(w=>{
+if(w.xy&&w.xy.length>0){
+w.xy.forEach(coord=>{
+const col=coord[0]-1;
+const row=coord[1]-1;
+if(windows[col]){
+const cells=windows[col].querySelectorAll('.reel-cell');
+if(cells[row])cells[row].classList.add('winner-cell');
+}});}});}
+}
+
+function createCell(sym){
+const cell=document.createElement('div');
+cell.className='reel-cell p-2';
+if(sym<1||sym>8)sym=((sym-1)%8)+1;
+const img=document.createElement('img');
+img.src=SYM[sym];
+img.className='symbol-img';
+cell.appendChild(img);
+return cell;
+}
+
+async function initGame(){
+const r=await api('/game/new',{cid:1,uid:3,alias:'Novomatic/Sizzling Hot Deluxe'});
+if(r&&r.gid){
+S.gid=r.gid;
+S.bal=r.wallet||1000;
+S.scr=r.scr||(r.game&&r.game.scr);
+}
+render();
+updateUI();
+}
+
+function render(){
+const c=document.getElementById('reels');
+c.innerHTML='';
+if(!S.scr)return;
+for(let col=0;col<S.scr.length;col++){
+const win=document.createElement('div');
+win.className='reel-window';
+const strip=document.createElement('div');
+strip.className='reel-strip';
+for(let i=0;i<S.scr[col].length;i++){
+strip.appendChild(createCell(S.scr[col][i]));
+}
+win.appendChild(strip);
+c.appendChild(win);
+}
+}
+
+async function spin(){
+if(S.spinning)return;
+S.spinning=true;
+document.getElementById('spin-btn').disabled=true;
+document.getElementById('last-win').textContent='0';
+document.getElementById('last-win').className='text-3xl font-bold text-gray-500';
+document.getElementById('win-display').classList.add('hidden');
+document.querySelectorAll('.winner-cell').forEach(c=>c.classList.remove('winner-cell'));
+
+playSound('spin-sound');
+
+let win=0,wins=[];
+try{
+const r=await api('/slot/spin',{gid:S.gid});
+if(r){
+S.scr=r.scr||(r.game&&r.game.scr);
+if(r.wallet!==undefined)S.bal=r.wallet;
+win=r.gain||(r.game&&r.game.gain)||0;
+wins=r.wins||(r.game&&r.game.wins)||[];
+}
+}catch(err){console.log(err)}
+
+const windows=document.querySelectorAll('.reel-window');
+const EXTRA=30;
+const CELL=138;
+const spinDistance=EXTRA*CELL;
+
+windows.forEach((w,col)=>{
+const strip=w.querySelector('.reel-strip');
+strip.innerHTML='';
+if(S.scr&&S.scr[col]){
+for(let i=0;i<S.scr[col].length;i++){
+strip.appendChild(createCell(S.scr[col][i]));
+}
+}
+for(let i=0;i<EXTRA;i++){
+strip.appendChild(createCell(Math.floor(Math.random()*8)+1));
+}
+strip.style.transition='none';
+strip.style.transform='translateY(-'+spinDistance+'px)';
+});
+
+document.body.offsetHeight;
+
+windows.forEach((w,col)=>{
+const strip=w.querySelector('.reel-strip');
+const delay=col*200;
+const duration=1500+col*200;
+setTimeout(()=>{
+strip.style.transition='transform '+duration+'ms cubic-bezier(0.15, 0.8, 0.3, 1)';
+strip.style.transform='translateY(0)';
+},delay);
+});
+
+const totalTime=1500+4*200+500;
+await new Promise(r=>setTimeout(r,totalTime));
+
+updateUI();
+if(win>0){
+document.getElementById('last-win').textContent=win;
+document.getElementById('last-win').className='text-3xl font-bold text-yellow-400';
+highlightWinners(wins);
+showWin(win);
+}
+S.spinning=false;
+document.getElementById('spin-btn').disabled=false;
+}
+
+function updateUI(){
+document.getElementById('balance').textContent=S.bal;
+document.getElementById('total-bet').textContent=S.bet*S.lines;
+document.getElementById('bet-display').textContent=S.bet;
+document.getElementById('lines-display').textContent=S.lines;
+}
+
+function changeBet(d){S.bet=Math.max(1,Math.min(100,S.bet+d));updateUI()}
+function changeLines(d){S.lines=Math.max(1,Math.min(5,S.lines+d));updateUI()}
+document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();spin()}});
+initGame();
+</script>
+</body>
+</html>

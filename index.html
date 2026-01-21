@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crypto Slots</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body {
+  background: linear-gradient(135deg, #1a0a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh;
+}
+.game-card {
+  transition: all 0.3s ease;
+  background: rgba(0,0,0,0.4);
+  border: 2px solid rgba(255,255,255,0.1);
+}
+.game-card:hover {
+  transform: translateY(-10px) scale(1.02);
+  border-color: rgba(255,215,0,0.5);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 30px rgba(255,215,0,0.2);
+}
+.game-card img {
+  transition: all 0.3s ease;
+}
+.game-card:hover img {
+  transform: scale(1.05);
+}
+.neon-text {
+  text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 40px currentColor;
+}
+</style>
+</head>
+<body class="text-white">
+<div class="container mx-auto px-4 py-12">
+  
+  <header class="text-center mb-16">
+    <h1 class="text-6xl font-black mb-4 bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500 bg-clip-text text-transparent">
+      🎰 CRYPTO SLOTS 🎰
+    </h1>
+    <p class="text-xl text-gray-400">Choose Your Game</p>
+  </header>
+
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+    
+    <!-- Florida Man -->
+    <a href="florida-man/" class="game-card rounded-2xl overflow-hidden">
+      <div class="aspect-video bg-gradient-to-br from-green-900 to-green-700 flex items-center justify-center p-4">
+        <img src="florida-man/assets/logo.png" alt="Florida Man" class="max-h-full max-w-full object-contain">
+      </div>
+      <div class="p-6">
+        <h2 class="text-2xl font-bold text-yellow-400 mb-2">🐊 Florida Man</h2>
+        <p class="text-gray-400 text-sm mb-3">Classic 5x3 slot with 5 paylines. Beer, gators, and chaos!</p>
+        <div class="flex gap-2">
+          <span class="px-2 py-1 bg-green-900/50 rounded text-xs text-green-400">5 Lines</span>
+          <span class="px-2 py-1 bg-blue-900/50 rounded text-xs text-blue-400">96% RTP</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Area 51 -->
+    <a href="area-51/" class="game-card rounded-2xl overflow-hidden">
+      <div class="aspect-video bg-gradient-to-br from-purple-900 to-indigo-900 flex items-center justify-center p-4">
+        <img src="area-51/assets/logo.png" alt="Area 51" class="max-h-full max-w-full object-contain">
+      </div>
+      <div class="p-6">
+        <h2 class="text-2xl font-bold text-green-400 mb-2">👽 Area 51 Files</h2>
+        <p class="text-gray-400 text-sm mb-3">Free spins with expanding symbols! Uncover the truth...</p>
+        <div class="flex gap-2">
+          <span class="px-2 py-1 bg-purple-900/50 rounded text-xs text-purple-400">10 Lines</span>
+          <span class="px-2 py-1 bg-green-900/50 rounded text-xs text-green-400">Free Spins</span>
+          <span class="px-2 py-1 bg-blue-900/50 rounded text-xs text-blue-400">96% RTP</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Coming Soon placeholder -->
+    <div class="game-card rounded-2xl overflow-hidden opacity-50 cursor-not-allowed">
+      <div class="aspect-video bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+        <span class="text-6xl">🔒</span>
+      </div>
+      <div class="p-6">
+        <h2 class="text-2xl font-bold text-gray-500 mb-2">Coming Soon</h2>
+        <p class="text-gray-600 text-sm">More games in development...</p>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="text-center mt-16 text-gray-500 text-sm">
+    <p>Play responsibly • Games are for entertainment only</p>
+  </footer>
+
+</div>
+</body>
+</html>
