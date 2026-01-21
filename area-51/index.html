@@ -479,16 +479,17 @@ const CONFIG = {
 };
 
 // Symbol mapping: API symbol ID -> our image file
+// Book of Ra API: 1=Explorer(highest), 2=Pharaoh, 3=Idol, 4=Scarab, 5=A, 6=K, 7=Q, 8=J, 9=10(lowest), 10=Book
 const SYMBOLS = {
-  1: 'assets/symbols/6.png',   // A -> Atom
-  2: 'assets/symbols/7.png',   // K -> Rocket
-  3: 'assets/symbols/8.png',   // Q -> TV Static
-  4: 'assets/symbols/9.png',   // J -> Tinfoil Hat
-  5: 'assets/symbols/10.png',  // 10 -> Cow
-  6: 'assets/symbols/4.png',   // Scarab -> Ray Gun
-  7: 'assets/symbols/3.png',   // Idol -> UFO
-  8: 'assets/symbols/2.png',   // Pharaoh -> G-Man
-  9: 'assets/symbols/1.png',   // Explorer -> Alien
+  1: 'assets/symbols/1.png',   // Explorer (highest) -> Alien
+  2: 'assets/symbols/2.png',   // Pharaoh -> G-Man
+  3: 'assets/symbols/3.png',   // Idol -> UFO
+  4: 'assets/symbols/4.png',   // Scarab -> Ray Gun
+  5: 'assets/symbols/6.png',   // A -> Atom
+  6: 'assets/symbols/7.png',   // K -> Rocket
+  7: 'assets/symbols/8.png',   // Q -> TV Static
+  8: 'assets/symbols/9.png',   // J -> Tinfoil Hat
+  9: 'assets/symbols/10.png',  // 10 (lowest) -> Cow
   10: 'assets/symbols/5.png'   // Book (scatter) -> Classified File
 };
 
@@ -629,7 +630,7 @@ function randomScreen() {
 // ===========================================
 // RENDER FUNCTIONS
 // ===========================================
-function createCell(symId) {
+function createCell(symId) { console.log('createCell symId:', symId, '-> img:', SYMBOLS[symId]);
   const cellEl = document.createElement('div');
   cellEl.className = 'reel-cell';
 
@@ -728,9 +729,9 @@ function highlightWinners(wins) {
       });
     }
 
-    // Draw payline if this win has a line number
-    if (win.li !== undefined && win.li >= 1 && win.li <= 10) {
-      drawPayline(win.li, win.xy ? win.xy.length : 5);
+    // Draw payline using actual xy coordinates from the win
+    if (win.xy && win.xy.length >= 2 && win.li !== undefined) {
+      drawPayline(win.li, win.xy);
     }
   });
 }
@@ -743,15 +744,10 @@ function clearPaylines() {
   overlay.innerHTML = '';
 }
 
-function drawPayline(lineNum, symbolCount) {
+function drawPayline(lineNum, xyCoords) {
   const overlay = $('paylineOverlay');
-  const payline = PAYLINES[lineNum - 1]; // Convert 1-indexed to 0-indexed
-  if (!payline) return;
-
-  // Get reel dimensions
-  const reelsEl = $('reels');
-  const reelRect = reelsEl.getBoundingClientRect();
-  const containerRect = reelsEl.parentElement.getBoundingClientRect();
+  const payline = PAYLINES[lineNum - 1]; // Get color from payline definition
+  if (!payline || !xyCoords || xyCoords.length < 2) return;
 
   // Calculate cell dimensions (180px cell + 8px gap)
   const CELL_WIDTH = 180;
@@ -759,17 +755,18 @@ function drawPayline(lineNum, symbolCount) {
   const GAP = 8;
   const PADDING = 15; // Container padding
 
-  // Calculate positions for each point on the payline
+  // Calculate positions for each point using ACTUAL xy coordinates from API
+  // API xy format: [col, row] where col=1-5, row=1-3 (1=top, 2=middle, 3=bottom)
   const points = [];
-  const colsToShow = Math.min(symbolCount, 5);
 
-  for (let col = 0; col < colsToShow; col++) {
-    const row = payline.rows[col] - 1; // Convert 1-indexed to 0-indexed
+  for (let i = 0; i < xyCoords.length; i++) {
+    const col = xyCoords[i][0] - 1; // Convert 1-indexed to 0-indexed
+    const row = xyCoords[i][1] - 1; // Convert 1-indexed to 0-indexed
 
-    // X position: center of each cell
+    // X position: center of the cell in this column
     const x = PADDING + col * (CELL_WIDTH + GAP) + CELL_WIDTH / 2;
 
-    // Y position: center of the row in that cell
+    // Y position: center of the cell in this row
     const y = PADDING + row * (CELL_HEIGHT + GAP) + CELL_HEIGHT / 2;
 
     points.push({ x, y });
@@ -837,38 +834,39 @@ async function spin() {
     newScreen = randomScreen();
   }
 
-  // Spin animation - SEAMLESS approach (no disappearing symbols)
+  // Spin animation - symbols fall DOWN like a real slot machine
   const windows = document.querySelectorAll('.reel-window');
   const EXTRA = 30;
   const CELL = 188; // 180px cell + 8px gap
+  const spinDistance = EXTRA * CELL;
 
-  // SEAMLESS: Don't clear existing cells - append to them
-  // Structure: [current 3 visible] + [random EXTRA] + [final 3]
+  // Structure: [3 final at TOP] + [30 random at BOTTOM]
+  // Start at -spinDistance (showing random), animate to 0 (showing final)
   windows.forEach((w, col) => {
     const strip = w.querySelector('.reel-strip');
+    strip.innerHTML = '';
 
-    // Reset transform (current cells stay visible at top)
-    strip.style.transition = 'none';
-    strip.style.transform = 'translateY(0)';
+    // Add final 3 symbols at TOP of strip (what we land on)
+    for (let row = 0; row < CONFIG.ROWS; row++) {
+      const cellEl = createCell(newScreen[col][row]);
+      cellEl.id = `cell-${col}-${row}`;
+      strip.appendChild(cellEl);
+    }
 
-    // Append EXTRA random cells after current visible ones
+    // Add EXTRA random symbols at BOTTOM of strip (scroll through these)
     for (let i = 0; i < EXTRA; i++) {
       strip.appendChild(createCell(Math.floor(Math.random() * 10) + 1));
     }
 
-    // Append final 3 cells at the end
-    for (let row = 0; row < CONFIG.ROWS; row++) {
-      strip.appendChild(createCell(newScreen[col][row]));
-    }
+    // Start position: show random symbols at bottom (large negative offset)
+    strip.style.transition = 'none';
+    strip.style.transform = 'translateY(-' + spinDistance + 'px)';
   });
 
   // Force reflow
   document.body.offsetHeight;
 
-  // Animate: scroll down through the strip
-  // Distance = (3 current + EXTRA random) cells
-  const scrollDistance = (CONFIG.ROWS + EXTRA) * CELL;
-
+  // Animate to 0: symbols scroll up, final symbols settle at top
   windows.forEach((w, col) => {
     const strip = w.querySelector('.reel-strip');
     const delay = col * 200;
@@ -876,27 +874,13 @@ async function spin() {
 
     setTimeout(() => {
       strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(0.15, 0.8, 0.3, 1)';
-      strip.style.transform = 'translateY(-' + scrollDistance + 'px)';
+      strip.style.transform = 'translateY(0)';
     }, delay);
   });
 
   // Wait for all animations to complete
   const totalTime = 1500 + 4 * 200 + 500;
   await new Promise(r => setTimeout(r, totalTime));
-
-  // Clean up: rebuild with just the final 3 cells (seamless - same symbols showing)
-  windows.forEach((w, col) => {
-    const strip = w.querySelector('.reel-strip');
-    strip.style.transition = 'none';
-    strip.innerHTML = '';
-    strip.style.transform = 'translateY(0)';
-
-    for (let row = 0; row < CONFIG.ROWS; row++) {
-      const cellEl = createCell(newScreen[col][row]);
-      cellEl.id = `cell-${col}-${row}`;
-      strip.appendChild(cellEl);
-    }
-  });
 
   // Update state with new screen
   state.screen = newScreen;
