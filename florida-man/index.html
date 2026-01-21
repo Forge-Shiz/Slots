@@ -180,37 +180,57 @@ wins=r.wins||(r.game&&r.game.wins)||[];
 const windows=document.querySelectorAll('.reel-window');
 const EXTRA=30;
 const CELL=138;
-const spinDistance=EXTRA*CELL;
+const ROWS=3;
 
+// SEAMLESS SPIN: Don't clear existing cells - append to them
+// Structure: [current 3] + [random EXTRA] + [final 3]
 windows.forEach((w,col)=>{
 const strip=w.querySelector('.reel-strip');
-strip.innerHTML='';
+strip.style.transition='none';
+strip.style.transform='translateY(0)';
+
+// Append EXTRA random cells after current visible cells
+for(let i=0;i<EXTRA;i++){
+strip.appendChild(createCell(Math.floor(Math.random()*8)+1));
+}
+
+// Append final 3 cells at the end
 if(S.scr&&S.scr[col]){
 for(let i=0;i<S.scr[col].length;i++){
 strip.appendChild(createCell(S.scr[col][i]));
 }
 }
-for(let i=0;i<EXTRA;i++){
-strip.appendChild(createCell(Math.floor(Math.random()*8)+1));
-}
-strip.style.transition='none';
-strip.style.transform='translateY(-'+spinDistance+'px)';
 });
 
 document.body.offsetHeight;
 
+// Animate: scroll down through the strip
+const scrollDistance=(ROWS+EXTRA)*CELL;
 windows.forEach((w,col)=>{
 const strip=w.querySelector('.reel-strip');
 const delay=col*200;
 const duration=1500+col*200;
 setTimeout(()=>{
 strip.style.transition='transform '+duration+'ms cubic-bezier(0.15, 0.8, 0.3, 1)';
-strip.style.transform='translateY(0)';
+strip.style.transform='translateY(-'+scrollDistance+'px)';
 },delay);
 });
 
 const totalTime=1500+4*200+500;
 await new Promise(r=>setTimeout(r,totalTime));
+
+// Clean up: rebuild with just final 3 cells
+windows.forEach((w,col)=>{
+const strip=w.querySelector('.reel-strip');
+strip.style.transition='none';
+strip.innerHTML='';
+strip.style.transform='translateY(0)';
+if(S.scr&&S.scr[col]){
+for(let i=0;i<S.scr[col].length;i++){
+strip.appendChild(createCell(S.scr[col][i]));
+}
+}
+});
 
 updateUI();
 if(win>0){

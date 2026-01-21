@@ -1,0 +1,543 @@
+/* ============================================
+   SLOT UI - Professional Casino Interface
+   ============================================ */
+
+:root {
+  --sui-accent: #00d4aa;
+  --sui-accent-dark: #00a888;
+  --sui-accent-glow: rgba(0, 212, 170, 0.4);
+  --sui-gold: #ffd700;
+  --sui-gold-glow: rgba(255, 215, 0, 0.4);
+  --sui-bg-dark: rgba(0, 0, 0, 0.85);
+  --sui-bg-medium: rgba(20, 25, 30, 0.9);
+  --sui-bg-light: rgba(40, 45, 55, 0.8);
+  --sui-text: #ffffff;
+  --sui-text-dim: rgba(255, 255, 255, 0.5);
+  --sui-border: rgba(255, 255, 255, 0.1);
+  --sui-radius: 12px;
+  --sui-radius-lg: 20px;
+  --sui-transition: 0.2s ease;
+}
+
+/* ============================================
+   Bottom Control Bar
+   ============================================ */
+
+.sui-bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, var(--sui-bg-dark) 0%, rgba(0, 0, 0, 0.7) 100%);
+  padding: 8px 24px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 100;
+}
+
+/* Balance/Win/Bet Display Row */
+.sui-stats-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 500px;
+  padding: 0 8px;
+}
+
+.sui-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 90px;
+}
+
+.sui-stat-label {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--sui-text-dim);
+  margin-bottom: 4px;
+}
+
+.sui-stat-value {
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--sui-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.sui-stat-value.balance {
+  color: var(--sui-text);
+}
+
+.sui-stat-value.win {
+  color: var(--sui-text-dim);
+  transition: color var(--sui-transition), text-shadow var(--sui-transition);
+}
+
+.sui-stat-value.win.active {
+  color: var(--sui-gold);
+  text-shadow: 0 0 20px var(--sui-gold-glow);
+}
+
+.sui-stat-value.bet {
+  color: var(--sui-accent);
+}
+
+/* ============================================
+   Spin Button
+   ============================================ */
+
+.sui-spin-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sui-spin-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 3px solid var(--sui-accent);
+  background: linear-gradient(145deg, #1a2030 0%, #0d1015 100%);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--sui-transition);
+  box-shadow:
+    0 0 15px var(--sui-accent-glow),
+    inset 0 2px 4px rgba(255, 255, 255, 0.1),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.sui-spin-btn::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  right: 3px;
+  bottom: 3px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+}
+
+.sui-spin-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow:
+    0 0 30px var(--sui-accent-glow),
+    0 0 60px rgba(0, 212, 170, 0.2),
+    inset 0 2px 4px rgba(255, 255, 255, 0.1),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+  border-color: #00ffcc;
+}
+
+.sui-spin-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.sui-spin-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: rgba(0, 212, 170, 0.3);
+}
+
+.sui-spin-btn svg {
+  width: 24px;
+  height: 24px;
+  fill: var(--sui-accent);
+  transition: transform 0.3s ease;
+}
+
+.sui-spin-btn.spinning svg {
+  animation: sui-spin-rotate 0.6s linear infinite;
+}
+
+@keyframes sui-spin-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   Control Buttons Row
+   ============================================ */
+
+.sui-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.sui-ctrl-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--sui-border);
+  background: var(--sui-bg-light);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--sui-transition);
+}
+
+.sui-ctrl-btn:hover {
+  background: rgba(60, 70, 85, 0.9);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.08);
+}
+
+.sui-ctrl-btn:active {
+  transform: scale(0.95);
+}
+
+.sui-ctrl-btn.active {
+  border-color: var(--sui-accent);
+  background: rgba(0, 212, 170, 0.15);
+}
+
+.sui-ctrl-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: rgba(255, 255, 255, 0.7);
+  transition: fill var(--sui-transition);
+}
+
+.sui-ctrl-btn:hover svg {
+  fill: #ffffff;
+}
+
+.sui-ctrl-btn.active svg {
+  fill: var(--sui-accent);
+}
+
+/* ============================================
+   Bet Selector Popup
+   ============================================ */
+
+.sui-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.sui-popup-overlay.active {
+  display: flex;
+  opacity: 1;
+}
+
+.sui-popup {
+  background: linear-gradient(145deg, #1e2530 0%, #12161c 100%);
+  border: 1px solid var(--sui-border);
+  border-radius: var(--sui-radius-lg);
+  padding: 28px;
+  min-width: 300px;
+  max-width: 90vw;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  transform: scale(0.9);
+  transition: transform 0.2s ease;
+}
+
+.sui-popup-overlay.active .sui-popup {
+  transform: scale(1);
+}
+
+.sui-popup-title {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--sui-text-dim);
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.sui-bet-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.sui-bet-option {
+  padding: 14px 12px;
+  background: var(--sui-bg-light);
+  border: 1.5px solid var(--sui-border);
+  border-radius: var(--sui-radius);
+  color: var(--sui-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--sui-transition);
+  text-align: center;
+}
+
+.sui-bet-option:hover {
+  background: rgba(60, 70, 85, 0.9);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.sui-bet-option.selected {
+  background: rgba(0, 212, 170, 0.2);
+  border-color: var(--sui-accent);
+  color: var(--sui-accent);
+}
+
+.sui-popup-close {
+  display: block;
+  width: 100%;
+  margin-top: 20px;
+  padding: 12px;
+  background: transparent;
+  border: 1.5px solid var(--sui-border);
+  border-radius: var(--sui-radius);
+  color: var(--sui-text-dim);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--sui-transition);
+}
+
+.sui-popup-close:hover {
+  background: var(--sui-bg-light);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--sui-text);
+}
+
+/* ============================================
+   Info Popup
+   ============================================ */
+
+.sui-info-content {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.sui-info-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sui-info-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sui-info-content::-webkit-scrollbar-thumb {
+  background: var(--sui-border);
+  border-radius: 2px;
+}
+
+.sui-info-section {
+  margin-bottom: 20px;
+}
+
+.sui-info-section:last-child {
+  margin-bottom: 0;
+}
+
+.sui-info-heading {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--sui-accent);
+  margin-bottom: 12px;
+}
+
+.sui-info-text {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 8px;
+}
+
+.sui-symbol-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--sui-bg-light);
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+
+.sui-symbol-row img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.sui-symbol-name {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ============================================
+   Win Display Overlay
+   ============================================ */
+
+.sui-win-display {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.85) 100%);
+  border: 2px solid var(--sui-gold);
+  border-radius: var(--sui-radius-lg);
+  padding: 32px 48px;
+  text-align: center;
+  z-index: 250;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  box-shadow:
+    0 0 40px var(--sui-gold-glow),
+    inset 0 0 60px rgba(255, 215, 0, 0.05);
+}
+
+.sui-win-display.active {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  pointer-events: auto;
+}
+
+.sui-win-label {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--sui-gold);
+  margin-bottom: 8px;
+}
+
+.sui-win-amount {
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 48px;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 0 30px var(--sui-gold-glow);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
+   Free Spins Banner
+   ============================================ */
+
+.sui-freespins-banner {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 2px solid var(--sui-accent);
+  border-radius: var(--sui-radius);
+  padding: 12px 28px;
+  z-index: 150;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 30px var(--sui-accent-glow);
+}
+
+.sui-freespins-banner.active {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.sui-freespins-text {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--sui-accent);
+  letter-spacing: 1px;
+}
+
+.sui-freespins-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
+   Responsive Adjustments
+   ============================================ */
+
+@media (max-width: 480px) {
+  .sui-bottom-bar {
+    padding: 12px 16px 20px;
+    gap: 12px;
+  }
+
+  .sui-stat-value {
+    font-size: 18px;
+  }
+
+  .sui-spin-btn {
+    width: 70px;
+    height: 70px;
+  }
+
+  .sui-spin-btn svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .sui-ctrl-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .sui-ctrl-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .sui-controls-row {
+    gap: 16px;
+  }
+}
+
+@media (min-width: 768px) {
+  .sui-spin-btn {
+    width: 90px;
+    height: 90px;
+  }
+
+  .sui-spin-btn svg {
+    width: 36px;
+    height: 36px;
+  }
+
+  .sui-stat-value {
+    font-size: 26px;
+  }
+}

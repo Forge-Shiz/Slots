@@ -85,6 +85,7 @@ body {
 
 /* Reels Container */
 .reels-container {
+  position: relative;
   margin-top: auto;
   margin-bottom: 20px;
   padding: 15px;
@@ -140,6 +141,30 @@ body {
 @keyframes winPulse {
   from { transform: scale(1); }
   to { transform: scale(1.08); }
+}
+
+/* Payline Overlay */
+.payline-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 50;
+}
+.payline-overlay line {
+  stroke-width: 4;
+  stroke-linecap: round;
+  fill: none;
+  opacity: 0;
+}
+.payline-overlay line.active {
+  animation: paylineFlash 0.4s ease-in-out 3;
+}
+@keyframes paylineFlash {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
 }
 
 /* Balance Display */
@@ -366,6 +391,7 @@ body {
   
   <div class="reels-container">
     <div class="reels" id="reels"></div>
+    <svg class="payline-overlay" id="paylineOverlay"></svg>
   </div>
   
   <div class="balance-display">
@@ -455,7 +481,7 @@ const CONFIG = {
 // Symbol mapping: API symbol ID -> our image file
 const SYMBOLS = {
   1: 'assets/symbols/6.png',   // A -> Atom
-  2: 'assets/symbols/7.png',   // K -> Rocket  
+  2: 'assets/symbols/7.png',   // K -> Rocket
   3: 'assets/symbols/8.png',   // Q -> TV Static
   4: 'assets/symbols/9.png',   // J -> Tinfoil Hat
   5: 'assets/symbols/10.png',  // 10 -> Cow
@@ -465,6 +491,20 @@ const SYMBOLS = {
   9: 'assets/symbols/1.png',   // Explorer -> Alien
   10: 'assets/symbols/5.png'   // Book (scatter) -> Classified File
 };
+
+// Payline definitions: row positions (1=top, 2=middle, 3=bottom) for each of 5 columns
+const PAYLINES = [
+  { rows: [2,2,2,2,2], color: '#ff0000' },  // Line 1: middle straight - red
+  { rows: [1,1,1,1,1], color: '#00ff00' },  // Line 2: top straight - green
+  { rows: [3,3,3,3,3], color: '#0088ff' },  // Line 3: bottom straight - blue
+  { rows: [1,2,3,2,1], color: '#ffff00' },  // Line 4: V shape - yellow
+  { rows: [3,2,1,2,3], color: '#ff00ff' },  // Line 5: inverted V - magenta
+  { rows: [2,1,1,1,2], color: '#00ffff' },  // Line 6: cyan
+  { rows: [2,3,3,3,2], color: '#ff8800' },  // Line 7: orange
+  { rows: [1,1,2,3,3], color: '#88ff00' },  // Line 8: lime
+  { rows: [3,3,2,1,1], color: '#ff0088' },  // Line 9: pink
+  { rows: [2,1,2,3,2], color: '#8800ff' }   // Line 10: purple
+];
 
 // ===========================================
 // GAME STATE
@@ -667,9 +707,10 @@ function highlightWinners(wins) {
   // Clear previous highlights
   document.querySelectorAll('.winner').forEach(el => el.classList.remove('winner'));
   document.querySelectorAll('.expanded').forEach(el => el.classList.remove('expanded'));
-  
+  clearPaylines();
+
   if (!wins || wins.length === 0) return;
-  
+
   wins.forEach(win => {
     if (win.xy && win.xy.length > 0) {
       win.xy.forEach(coord => {
@@ -678,7 +719,7 @@ function highlightWinners(wins) {
         const cell = $(`cell-${col}-${row}`);
         if (cell) {
           cell.classList.add('winner');
-          
+
           // Check if this is an expanding symbol
           if (state.expandingSymbol && win.sym === state.expandingSymbol) {
             cell.classList.add('expanded');
@@ -686,7 +727,66 @@ function highlightWinners(wins) {
         }
       });
     }
+
+    // Draw payline if this win has a line number
+    if (win.li !== undefined && win.li >= 1 && win.li <= 10) {
+      drawPayline(win.li, win.xy ? win.xy.length : 5);
+    }
   });
+}
+
+// ===========================================
+// PAYLINE VISUALIZATION
+// ===========================================
+function clearPaylines() {
+  const overlay = $('paylineOverlay');
+  overlay.innerHTML = '';
+}
+
+function drawPayline(lineNum, symbolCount) {
+  const overlay = $('paylineOverlay');
+  const payline = PAYLINES[lineNum - 1]; // Convert 1-indexed to 0-indexed
+  if (!payline) return;
+
+  // Get reel dimensions
+  const reelsEl = $('reels');
+  const reelRect = reelsEl.getBoundingClientRect();
+  const containerRect = reelsEl.parentElement.getBoundingClientRect();
+
+  // Calculate cell dimensions (180px cell + 8px gap)
+  const CELL_WIDTH = 180;
+  const CELL_HEIGHT = 180;
+  const GAP = 8;
+  const PADDING = 15; // Container padding
+
+  // Calculate positions for each point on the payline
+  const points = [];
+  const colsToShow = Math.min(symbolCount, 5);
+
+  for (let col = 0; col < colsToShow; col++) {
+    const row = payline.rows[col] - 1; // Convert 1-indexed to 0-indexed
+
+    // X position: center of each cell
+    const x = PADDING + col * (CELL_WIDTH + GAP) + CELL_WIDTH / 2;
+
+    // Y position: center of the row in that cell
+    const y = PADDING + row * (CELL_HEIGHT + GAP) + CELL_HEIGHT / 2;
+
+    points.push({ x, y });
+  }
+
+  // Create SVG line segments connecting the points
+  for (let i = 0; i < points.length - 1; i++) {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', points[i].x);
+    line.setAttribute('y1', points[i].y);
+    line.setAttribute('x2', points[i + 1].x);
+    line.setAttribute('y2', points[i + 1].y);
+    line.setAttribute('stroke', payline.color);
+    line.setAttribute('filter', `drop-shadow(0 0 6px ${payline.color})`);
+    line.classList.add('active');
+    overlay.appendChild(line);
+  }
 }
 
 // ===========================================
@@ -704,9 +804,10 @@ async function spin() {
   state.lastWin = 0;
   lastWinEl.textContent = '0.00';
 
-  // Clear previous wins
+  // Clear previous wins and paylines
   document.querySelectorAll('.winner').forEach(el => el.classList.remove('winner'));
   document.querySelectorAll('.expanded').forEach(el => el.classList.remove('expanded'));
+  clearPaylines();
 
   // Deduct bet (unless free spin)
   if (state.freeSpins <= 0) {
@@ -736,38 +837,38 @@ async function spin() {
     newScreen = randomScreen();
   }
 
-  // Spin animation using translateY (like Florida Man)
+  // Spin animation - SEAMLESS approach (no disappearing symbols)
   const windows = document.querySelectorAll('.reel-window');
   const EXTRA = 30;
   const CELL = 188; // 180px cell + 8px gap
-  const spinDistance = EXTRA * CELL;
 
-  // Build strips with final symbols at top + extra random symbols below
+  // SEAMLESS: Don't clear existing cells - append to them
+  // Structure: [current 3 visible] + [random EXTRA] + [final 3]
   windows.forEach((w, col) => {
     const strip = w.querySelector('.reel-strip');
-    strip.innerHTML = '';
 
-    // Add final symbols (what we'll land on)
-    for (let row = 0; row < CONFIG.ROWS; row++) {
-      const cellEl = createCell(newScreen[col][row]);
-      cellEl.id = `cell-${col}-${row}`;
-      strip.appendChild(cellEl);
-    }
+    // Reset transform (current cells stay visible at top)
+    strip.style.transition = 'none';
+    strip.style.transform = 'translateY(0)';
 
-    // Add extra random symbols below (these scroll past)
+    // Append EXTRA random cells after current visible ones
     for (let i = 0; i < EXTRA; i++) {
       strip.appendChild(createCell(Math.floor(Math.random() * 10) + 1));
     }
 
-    // Start position: show extra symbols (negative offset)
-    strip.style.transition = 'none';
-    strip.style.transform = 'translateY(-' + spinDistance + 'px)';
+    // Append final 3 cells at the end
+    for (let row = 0; row < CONFIG.ROWS; row++) {
+      strip.appendChild(createCell(newScreen[col][row]));
+    }
   });
 
   // Force reflow
   document.body.offsetHeight;
 
-  // Animate each reel with staggered timing
+  // Animate: scroll down through the strip
+  // Distance = (3 current + EXTRA random) cells
+  const scrollDistance = (CONFIG.ROWS + EXTRA) * CELL;
+
   windows.forEach((w, col) => {
     const strip = w.querySelector('.reel-strip');
     const delay = col * 200;
@@ -775,13 +876,27 @@ async function spin() {
 
     setTimeout(() => {
       strip.style.transition = 'transform ' + duration + 'ms cubic-bezier(0.15, 0.8, 0.3, 1)';
-      strip.style.transform = 'translateY(0)';
+      strip.style.transform = 'translateY(-' + scrollDistance + 'px)';
     }, delay);
   });
 
   // Wait for all animations to complete
   const totalTime = 1500 + 4 * 200 + 500;
   await new Promise(r => setTimeout(r, totalTime));
+
+  // Clean up: rebuild with just the final 3 cells (seamless - same symbols showing)
+  windows.forEach((w, col) => {
+    const strip = w.querySelector('.reel-strip');
+    strip.style.transition = 'none';
+    strip.innerHTML = '';
+    strip.style.transform = 'translateY(0)';
+
+    for (let row = 0; row < CONFIG.ROWS; row++) {
+      const cellEl = createCell(newScreen[col][row]);
+      cellEl.id = `cell-${col}-${row}`;
+      strip.appendChild(cellEl);
+    }
+  });
 
   // Update state with new screen
   state.screen = newScreen;
