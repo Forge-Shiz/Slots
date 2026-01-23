@@ -184,54 +184,488 @@ body {
   to { transform: scale(1.05); }
 }
 
-/* Scatter Anticipation Effect - Image Based */
-.reel-window {
-  position: relative;
-}
-.anticipation-frame {
+/* ===========================================
+   ANTICIPATION EFFECTS - Enhanced CSS
+   =========================================== */
+
+/* Anticipation Container - wraps the reel for effects */
+.anticipation-container {
   position: absolute;
-  top: -10px;
-  left: -10px;
-  right: -10px;
-  bottom: -10px;
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
+  top: -12px;
+  left: -12px;
+  right: -12px;
+  bottom: -12px;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s ease;
   z-index: 5;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 16px;
+  overflow: visible;
 }
-.anticipation-frame.active {
+
+.anticipation-container.active {
   opacity: 1;
 }
-.anticipation-frame.normal {
-  background-image: url('assets/anticipation-frame.webp');
+
+/* LAYER 1: Pulsing Glow Border on container */
+.anticipation-container.active {
+  box-shadow:
+    0 0 15px #00ff00,
+    0 0 30px #00aa00,
+    0 0 45px rgba(0, 255, 0, 0.4);
+  animation: anticipationContainerPulse 0.8s ease-in-out infinite;
 }
-.anticipation-frame.hot {
-  background-image: url('assets/anticipation-frame-hot.webp');
+
+.anticipation-container.hot {
+  box-shadow:
+    0 0 20px #00ff00,
+    0 0 40px #ffdd00,
+    0 0 60px #ff8800,
+    0 0 80px rgba(255, 200, 0, 0.5);
+  animation: anticipationContainerPulseHot 0.4s ease-in-out infinite, screenShake 0.08s ease-in-out infinite;
 }
-.anticipation-particles {
+
+@keyframes anticipationContainerPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 15px #00ff00,
+      0 0 30px #00aa00,
+      0 0 45px rgba(0, 255, 0, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 30px #00ff00,
+      0 0 60px #44ff44,
+      0 0 80px #00aa00,
+      0 0 100px rgba(0, 255, 0, 0.6);
+  }
+}
+
+@keyframes anticipationContainerPulseHot {
+  0%, 100% {
+    box-shadow:
+      0 0 20px #00ff00,
+      0 0 40px #ffdd00,
+      0 0 60px #ff8800,
+      0 0 80px rgba(255, 200, 0, 0.5);
+  }
+  50% {
+    box-shadow:
+      0 0 35px #88ff00,
+      0 0 70px #ffff00,
+      0 0 100px #ffd700,
+      0 0 130px rgba(255, 255, 0, 0.7);
+  }
+}
+
+/* Animated Gradient Border */
+.anticipation-border {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  padding: 4px;
+  background: linear-gradient(
+    45deg,
+    #00ff00, #22ff44, #00ff88, #88ff00, #00ff00
+  );
+  background-size: 300% 300%;
+  animation: anticipationBorderFlow 1.5s linear infinite;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.anticipation-container.active .anticipation-border {
+  animation: anticipationBorderFlow 1.5s linear infinite, edgeFlicker 0.15s ease-in-out infinite;
+}
+
+/* Hot mode - green/gold mix */
+.anticipation-container.hot .anticipation-border {
+  padding: 5px;
+  background: linear-gradient(
+    45deg,
+    #00ff00, #88ff00, #ffdd00, #ffd700, #ff8800, #ffff00, #00ff00
+  );
+  background-size: 400% 400%;
+  animation: anticipationBorderFlowHot 0.6s linear infinite, edgeFlickerHot 0.1s ease-in-out infinite;
+}
+
+@keyframes anticipationBorderFlow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+@keyframes anticipationBorderFlowHot {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 400% 50%; }
+}
+
+/* Edge Flicker Effect */
+@keyframes edgeFlicker {
+  0%, 100% { opacity: 1; }
+  25% { opacity: 0.85; }
+  50% { opacity: 1; }
+  75% { opacity: 0.9; }
+}
+
+@keyframes edgeFlickerHot {
+  0%, 100% { opacity: 1; }
+  20% { opacity: 0.7; }
+  40% { opacity: 1; }
+  60% { opacity: 0.8; }
+  80% { opacity: 1; }
+}
+
+/* Inner Glow Overlay */
+.anticipation-glow-inner {
+  position: absolute;
+  inset: 4px;
+  border-radius: 12px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 255, 0, 0.2) 0%,
+    rgba(0, 255, 0, 0.08) 50%,
+    transparent 70%
+  );
+  animation: innerGlowPulse 1s ease-in-out infinite;
+}
+
+.anticipation-container.hot .anticipation-glow-inner {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 0, 0.3) 0%,
+    rgba(255, 200, 0, 0.15) 50%,
+    transparent 70%
+  );
+  animation: innerGlowPulseHot 0.5s ease-in-out infinite;
+}
+
+@keyframes innerGlowPulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+
+@keyframes innerGlowPulseHot {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+
+/* LAYER 2: anticipation.webp Particle Overlay */
+.anticipation-webp-overlay {
   position: absolute;
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 150px;
-  height: 450px;
+  width: 180%;
+  height: 100%;
   background: url('assets/anticipation.webp') center/contain no-repeat;
   pointer-events: none;
   opacity: 0;
-  z-index: 60;
+  z-index: 10;
+  mix-blend-mode: screen;
 }
-.anticipation-particles.active {
+
+.anticipation-container.active .anticipation-webp-overlay {
+  opacity: 0.9;
+  animation: webpOverlayPulse 1.2s ease-in-out infinite;
+}
+
+.anticipation-container.hot .anticipation-webp-overlay {
+  opacity: 1;
+  filter: brightness(1.3) saturate(1.2);
+  animation: webpOverlayPulseHot 0.6s ease-in-out infinite;
+}
+
+@keyframes webpOverlayPulse {
+  0%, 100% { opacity: 0.85; transform: translateX(-50%) scale(1); }
+  50% { opacity: 1; transform: translateX(-50%) scale(1.02); }
+}
+
+@keyframes webpOverlayPulseHot {
+  0%, 100% { opacity: 0.9; transform: translateX(-50%) scale(1); }
+  50% { opacity: 1; transform: translateX(-50%) scale(1.05); }
+}
+
+/* LAYER 3: BRIGHT Scanning Line Effect */
+.anticipation-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(0, 255, 100, 0.5) 20%,
+    rgba(0, 255, 100, 0.95) 40%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(0, 255, 100, 0.95) 60%,
+    rgba(0, 255, 100, 0.5) 80%,
+    transparent 100%
+  );
+  box-shadow:
+    0 0 20px #00ff00,
+    0 0 40px #00ff00,
+    0 0 60px rgba(0, 255, 100, 0.8),
+    0 0 80px rgba(0, 255, 100, 0.4);
+  z-index: 15;
+  animation: scanlineMove 2s ease-in-out infinite;
+  opacity: 0;
+}
+
+.anticipation-container.active .anticipation-scanline {
   opacity: 1;
 }
-/* Fallback glow if images don't load */
-.reel-window.anticipation-glow {
-  animation: anticipationGlow 0.4s ease-in-out infinite;
+
+/* HOT mode scanline - even brighter with gold */
+.anticipation-container.hot .anticipation-scanline {
+  height: 14px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 220, 0, 0.6) 15%,
+    rgba(0, 255, 100, 0.9) 30%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(0, 255, 100, 0.9) 70%,
+    rgba(255, 220, 0, 0.6) 85%,
+    transparent 100%
+  );
+  box-shadow:
+    0 0 25px #ffff00,
+    0 0 50px #00ff00,
+    0 0 75px #ffd700,
+    0 0 100px rgba(255, 255, 0, 0.6);
+  animation: scanlineMoveHot 1.2s ease-in-out infinite;
 }
-@keyframes anticipationGlow {
-  0%, 100% { filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.7)); }
-  50% { filter: drop-shadow(0 0 30px rgba(255, 215, 0, 1)); }
+
+@keyframes scanlineMove {
+  0%, 100% { top: -10px; }
+  50% { top: calc(100% - 0px); }
+}
+
+@keyframes scanlineMoveHot {
+  0%, 100% { top: -14px; }
+  50% { top: calc(100% + 4px); }
+}
+
+/* CSS Particle Container (backup/addition to webp) */
+.anticipation-particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: 14px;
+  z-index: 8;
+}
+
+/* Individual Particle */
+.anticipation-particle {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.anticipation-container.active .anticipation-particle {
+  animation: particleFloat 2.5s ease-out infinite;
+}
+
+.anticipation-container.hot .anticipation-particle {
+  animation: particleFloatHot 1.2s ease-out infinite;
+}
+
+/* Particle colors */
+.anticipation-particle.green {
+  background: #00ff00;
+  box-shadow: 0 0 8px #00ff00, 0 0 16px #00ff00;
+}
+.anticipation-particle.gold {
+  background: #ffd700;
+  box-shadow: 0 0 8px #ffd700, 0 0 16px #ffd700;
+}
+.anticipation-particle.white {
+  background: #ffffff;
+  box-shadow: 0 0 8px #ffffff, 0 0 16px rgba(255, 255, 255, 0.9);
+}
+
+/* Hot mode particles are bigger */
+.anticipation-container.hot .anticipation-particle {
+  width: 7px;
+  height: 7px;
+}
+.anticipation-container.hot .anticipation-particle.green {
+  box-shadow: 0 0 12px #88ff00, 0 0 24px #00ff00;
+}
+.anticipation-container.hot .anticipation-particle.gold {
+  box-shadow: 0 0 12px #ffd700, 0 0 24px #ffff00;
+}
+.anticipation-container.hot .anticipation-particle.white {
+  box-shadow: 0 0 12px #ffffff, 0 0 24px rgba(255, 255, 255, 1);
+}
+
+@keyframes particleFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(100%) scale(0.5);
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100%) scale(1.3);
+  }
+}
+
+@keyframes particleFloatHot {
+  0% {
+    opacity: 0;
+    transform: translateY(100%) scale(0.8);
+  }
+  10% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-130%) scale(1.6);
+  }
+}
+
+/* Screen Shake for Hot Mode */
+@keyframes screenShake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-2px, 1px); }
+  40% { transform: translate(2px, -1px); }
+  60% { transform: translate(-1px, -2px); }
+  80% { transform: translate(1px, 2px); }
+}
+
+/* Alert Flicker for Hot Mode */
+.anticipation-alert {
+  position: absolute;
+  top: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 3px;
+  color: #ff3300;
+  text-shadow: 0 0 15px #ff0000, 0 0 30px #ff6600, 0 0 45px #ffaa00;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.anticipation-container.hot .anticipation-alert {
+  animation: alertFlicker 0.2s ease-in-out infinite;
+}
+
+@keyframes alertFlicker {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* Corner Accents with enhanced glow */
+.anticipation-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: #00ff00;
+  border-style: solid;
+  border-width: 0;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 12;
+}
+
+.anticipation-container.active .anticipation-corner {
+  opacity: 1;
+  animation: cornerPulse 0.8s ease-in-out infinite;
+}
+
+.anticipation-container.hot .anticipation-corner {
+  border-color: #ffdd00;
+  animation: cornerPulseHot 0.35s ease-in-out infinite;
+}
+
+.anticipation-corner.top-left {
+  top: 0; left: 0;
+  border-top-width: 4px;
+  border-left-width: 4px;
+  border-top-left-radius: 12px;
+}
+.anticipation-corner.top-right {
+  top: 0; right: 0;
+  border-top-width: 4px;
+  border-right-width: 4px;
+  border-top-right-radius: 12px;
+}
+.anticipation-corner.bottom-left {
+  bottom: 0; left: 0;
+  border-bottom-width: 4px;
+  border-left-width: 4px;
+  border-bottom-left-radius: 12px;
+}
+.anticipation-corner.bottom-right {
+  bottom: 0; right: 0;
+  border-bottom-width: 4px;
+  border-right-width: 4px;
+  border-bottom-right-radius: 12px;
+}
+
+@keyframes cornerPulse {
+  0%, 100% {
+    opacity: 0.7;
+    box-shadow: 0 0 10px #00ff00, 0 0 20px rgba(0, 255, 0, 0.5);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 20px #00ff00, 0 0 40px #44ff44;
+  }
+}
+
+@keyframes cornerPulseHot {
+  0%, 100% {
+    opacity: 0.8;
+    box-shadow: 0 0 15px #ffdd00, 0 0 30px rgba(255, 200, 0, 0.6);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 30px #ffff00, 0 0 50px #ffd700, 0 0 70px #ff8800;
+  }
+}
+
+/* Energy Lines (additional effect for hot mode) */
+.anticipation-energy-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #ffd700, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.anticipation-container.hot .anticipation-energy-line {
+  animation: energyLinePulse 0.5s ease-in-out infinite;
+}
+
+.anticipation-energy-line:nth-child(1) { top: 25%; animation-delay: 0s; }
+.anticipation-energy-line:nth-child(2) { top: 50%; animation-delay: 0.15s; }
+.anticipation-energy-line:nth-child(3) { top: 75%; animation-delay: 0.3s; }
+
+@keyframes energyLinePulse {
+  0%, 100% { opacity: 0; transform: scaleX(0.3); }
+  50% { opacity: 0.8; transform: scaleX(1); }
 }
 
 /* Payline Overlay */
@@ -486,24 +920,102 @@ body {
 .info-content h3 {
   color: #ffd700;
   margin: 15px 0 10px;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+  padding-bottom: 5px;
 }
 .info-content p {
   color: #ccc;
-  line-height: 1.6;
-  margin-bottom: 10px;
+  line-height: 1.5;
+  margin-bottom: 6px;
+  font-size: 12px;
 }
 .info-content .symbol-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px;
+  padding: 6px 8px;
   background: rgba(0,0,0,0.3);
   border-radius: 8px;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
+  border-left: 3px solid transparent;
+}
+.info-content .symbol-row.premium {
+  border-left-color: #ff00ff;
+  background: rgba(255, 0, 255, 0.1);
+}
+.info-content .symbol-row.high {
+  border-left-color: #00ffff;
+  background: rgba(0, 255, 255, 0.08);
+}
+.info-content .symbol-row.medium {
+  border-left-color: #00ff88;
+  background: rgba(0, 255, 136, 0.06);
+}
+.info-content .symbol-row.low {
+  border-left-color: #888;
+}
+.info-content .symbol-row.scatter-highlight {
+  border-left-color: #ffd700;
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.4);
 }
 .info-content .symbol-row img {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+.info-content .payout-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.info-content .payout-info strong {
+  color: #fff;
+  font-size: 12px;
+}
+.info-content .payout-info .payouts {
+  color: #aaa;
+  font-size: 10px;
+  font-family: monospace;
+}
+
+/* Paylines Grid */
+.paylines-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin: 10px 0;
+}
+.payline-diagram {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 6px;
+}
+.payline-diagram .line-num {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  color: #fff;
+  flex-shrink: 0;
+}
+.payline-diagram svg {
+  width: 50px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.payline-diagram .line-desc {
+  font-size: 9px;
+  color: #999;
+  white-space: nowrap;
 }
 
 /* ===========================================
@@ -660,6 +1172,63 @@ body {
   .payline-overlay line {
     stroke-width: 2;
   }
+
+  /* Mobile anticipation adjustments */
+  .anticipation-container {
+    top: -8px;
+    left: -8px;
+    right: -8px;
+    bottom: -8px;
+    border-radius: 10px;
+  }
+
+  .anticipation-border {
+    border-radius: 10px;
+    padding: 2px;
+  }
+
+  .anticipation-glow-inner {
+    border-radius: 8px;
+  }
+
+  /* Still visible scanline on mobile */
+  .anticipation-scanline {
+    height: 6px;
+  }
+
+  .anticipation-container.hot .anticipation-scanline {
+    height: 8px;
+  }
+
+  .anticipation-particle {
+    width: 3px;
+    height: 3px;
+  }
+
+  .anticipation-container.hot .anticipation-particle {
+    width: 5px;
+    height: 5px;
+  }
+
+  .anticipation-corner {
+    width: 14px;
+    height: 14px;
+    border-width: 0;
+  }
+
+  .anticipation-webp-overlay {
+    width: 160%;
+  }
+
+  .anticipation-corner.top-left { border-top-width: 2px; border-left-width: 2px; }
+  .anticipation-corner.top-right { border-top-width: 2px; border-right-width: 2px; }
+  .anticipation-corner.bottom-left { border-bottom-width: 2px; border-left-width: 2px; }
+  .anticipation-corner.bottom-right { border-bottom-width: 2px; border-right-width: 2px; }
+
+  .anticipation-alert {
+    font-size: 9px;
+    top: -22px;
+  }
 }
 
 /* Medium screens (601px - 900px) */
@@ -712,6 +1281,40 @@ body {
 
   .win-display .win-amount {
     font-size: 34px;
+  }
+
+  /* Medium screen anticipation */
+  .anticipation-container {
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    border-radius: 12px;
+  }
+
+  .anticipation-border {
+    border-radius: 12px;
+  }
+
+  .anticipation-glow-inner {
+    border-radius: 10px;
+  }
+
+  .anticipation-scanline {
+    height: 8px;
+  }
+
+  .anticipation-container.hot .anticipation-scanline {
+    height: 12px;
+  }
+
+  .anticipation-corner {
+    width: 18px;
+    height: 18px;
+  }
+
+  .anticipation-webp-overlay {
+    width: 170%;
   }
 }
 
@@ -805,6 +1408,47 @@ body {
   .expanding-symbol {
     display: none !important;
   }
+
+  /* Landscape anticipation */
+  .anticipation-container {
+    top: -6px;
+    left: -6px;
+    right: -6px;
+    bottom: -6px;
+    border-radius: 8px;
+  }
+
+  .anticipation-border {
+    border-radius: 8px;
+    padding: 2px;
+  }
+
+  .anticipation-particle {
+    width: 3px;
+    height: 3px;
+  }
+
+  .anticipation-scanline {
+    height: 5px;
+  }
+
+  .anticipation-container.hot .anticipation-scanline {
+    height: 7px;
+  }
+
+  .anticipation-alert {
+    font-size: 10px;
+    top: -20px;
+  }
+
+  .anticipation-corner {
+    width: 12px;
+    height: 12px;
+  }
+
+  .anticipation-webp-overlay {
+    width: 150%;
+  }
 }
 
 /* Extra small screens (under 350px width) */
@@ -844,6 +1488,42 @@ body {
   .reel-cell img {
     width: 38px;
     height: 38px;
+  }
+
+  /* Extra small anticipation */
+  .anticipation-container {
+    top: -6px;
+    left: -6px;
+    right: -6px;
+    bottom: -6px;
+    border-radius: 8px;
+  }
+
+  .anticipation-particle {
+    width: 3px;
+    height: 3px;
+  }
+
+  .anticipation-container.hot .anticipation-particle {
+    width: 4px;
+    height: 4px;
+  }
+
+  .anticipation-scanline {
+    height: 5px;
+  }
+
+  .anticipation-container.hot .anticipation-scanline {
+    height: 7px;
+  }
+
+  .anticipation-alert {
+    font-size: 8px;
+    top: -18px;
+  }
+
+  .anticipation-webp-overlay {
+    width: 140%;
   }
 }
 
@@ -1065,6 +1745,10 @@ body {
 </head>
 <body>
 <audio id="bgm" loop src="assets/Area51.mp3"></audio>
+<audio id="bonusMusic" loop src="assets/bonus.mp3" preload="auto"></audio>
+<!-- Anticipation sound placeholders - add audio files when ready -->
+<!-- <audio id="anticipationSound" src="assets/anticipation.mp3" preload="auto"></audio> -->
+<!-- <audio id="anticipationHotSound" src="assets/anticipation-hot.mp3" preload="auto"></audio> -->
 
 <div class="game-container" id="gameContainer">
   <img src="assets/logo.webp" alt="Area 51 Files" class="logo">
@@ -1075,7 +1759,7 @@ body {
   
   <div class="expanding-symbol" id="expandingSymbol">
     <span>EXPANDING:</span>
-    <img id="expandingImg" src="assets/symbols/1.png">
+    <img id="expandingImg" src="assets/symbols/1.webp">
   </div>
   
   <div class="reels-container">
@@ -1133,27 +1817,163 @@ body {
 
 <!-- Info Popup -->
 <div class="popup-overlay" id="infoPopup">
-  <div class="popup">
+  <div class="popup" style="max-width: 420px;">
     <h2>🛸 AREA 51 FILES</h2>
     <div class="info-content">
-      <h3>How to Play</h3>
-      <p>Match 3 or more symbols from left to right on the 10 paylines to win!</p>
 
-      <h3>🔮 Classified File (Scatter)</h3>
-      <p>Land 3+ Classified Files anywhere to trigger <strong>10 FREE SPINS!</strong></p>
-      <p>A random symbol becomes the <strong>EXPANDING SYMBOL</strong> during free spins - it expands to fill the entire reel when it can create a win!</p>
+      <h3>📋 How to Play</h3>
+      <p>• Spin the reels to match symbols from <strong>left to right</strong></p>
+      <p>• Match <strong>3, 4, or 5</strong> identical symbols on a payline to win</p>
+      <p>• <strong>10 paylines</strong> are always active</p>
+      <p>• Wins are multiplied by your bet per line (total bet ÷ 10)</p>
 
-      <h3>Symbols (Highest to Lowest)</h3>
-      <div class="symbol-row"><img src="assets/symbols/1.png"><span>Grey Alien - Premium</span></div>
-      <div class="symbol-row"><img src="assets/symbols/2.png"><span>G-Man - Premium</span></div>
-      <div class="symbol-row"><img src="assets/symbols/3.png"><span>Flying Saucer - High</span></div>
-      <div class="symbol-row"><img src="assets/symbols/4.png"><span>Ray Gun - High</span></div>
-      <div class="symbol-row"><img src="assets/symbols/5.png"><span>Classified File - SCATTER</span></div>
-      <div class="symbol-row"><img src="assets/symbols/6.png"><span>Atom - Medium</span></div>
-      <div class="symbol-row"><img src="assets/symbols/7.png"><span>Rocket - Medium</span></div>
-      <div class="symbol-row"><img src="assets/symbols/8.png"><span>TV Static - Low</span></div>
-      <div class="symbol-row"><img src="assets/symbols/9.png"><span>Tinfoil Hat - Low</span></div>
-      <div class="symbol-row"><img src="assets/symbols/10.png"><span>Cow - Low</span></div>
+      <h3>📂 Classified File (Scatter)</h3>
+      <div class="symbol-row scatter-highlight">
+        <img src="assets/symbols/5.webp">
+        <div>
+          <strong style="color: #ffd700;">SCATTER SYMBOL</strong><br>
+          <span style="font-size: 11px;">Land 3+ anywhere → <strong>10 FREE SPINS!</strong><br>
+          Scatters pay in ANY position (not just on paylines)</span>
+        </div>
+      </div>
+
+      <h3>🔮 Free Spins Bonus</h3>
+      <p>• A random <strong>EXPANDING SYMBOL</strong> is chosen</p>
+      <p>• When it lands, it <strong>expands to fill the entire reel</strong></p>
+      <p>• Land 3+ scatters during free spins = <strong>+10 more spins!</strong></p>
+
+      <h3>📊 Paylines (10 Lines)</h3>
+      <div class="paylines-grid">
+        <div class="payline-diagram">
+          <span class="line-num" style="background:#ff0000;">1</span>
+          <svg viewBox="0 0 50 30"><line x1="5" y1="15" x2="45" y2="15" stroke="#ff0000" stroke-width="2"/></svg>
+          <span class="line-desc">Middle</span>
+        </div>
+        <div class="payline-diagram">
+          <span class="line-num" style="background:#00ff00;">2</span>
+          <svg viewBox="0 0 50 30"><line x1="5" y1="5" x2="45" y2="5" stroke="#00ff00" stroke-width="2"/></svg>
+          <span class="line-desc">Top</span>
+        </div>
+        <div class="payline-diagram">
+          <span class="line-num" style="background:#0088ff;">3</span>
+          <svg viewBox="0 0 50 30"><line x1="5" y1="25" x2="45" y2="25" stroke="#0088ff" stroke-width="2"/></svg>
+          <span class="line-desc">Bottom</span>
+        </div>
+        <div class="payline-diagram">
+          <span class="line-num" style="background:#ffff00;color:#000;">4</span>
+          <svg viewBox="0 0 50 30"><polyline points="5,5 15,15 25,25 35,15 45,5" fill="none" stroke="#ffff00" stroke-width="2"/></svg>
+          <span class="line-desc">V Shape</span>
+        </div>
+        <div class="payline-diagram">
+          <span class="line-num" style="background:#ff00ff;">5</span>
+          <svg viewBox="0 0 50 30"><polyline points="5,25 15,15 25,5 35,15 45,25" fill="none" stroke="#ff00ff" stroke-width="2"/></svg>
+          <span class="line-desc">Inverted V</span>
+        </div>
+        <div class="payline-diagram">
+          <span class="line-num" style="background:#00ffff;color:#000;">6</span>
+          <svg viewBox="0 0 50 30"><polyline points="5,15 15,5 25,5 35,5 45,15" fill="none" stroke="#00ffff" stroke-width="2"/></svg>
+          <span class="line-desc">Top Dip</span>
+        </div>
+        <div class="payline-diagram">
+          <span class="line-num" style="background:#ff8800;">7</span>
+          <svg viewBox="0 0 50 30"><polyline points="5,15 15,25 25,25 35,25 45,15" fill="none" stroke="#ff8800" stroke-width="2"/></svg>
+          <span class="line-desc">Bottom Dip</span>
+        </div>
+        <div class="payline-diagram">
+          <span class="line-num" style="background:#88ff00;color:#000;">8</span>
+          <svg viewBox="0 0 50 30"><polyline points="5,5 15,5 25,15 35,25 45,25" fill="none" stroke="#88ff00" stroke-width="2"/></svg>
+          <span class="line-desc">Diagonal ↘</span>
+        </div>
+        <div class="payline-diagram">
+          <span class="line-num" style="background:#ff0088;">9</span>
+          <svg viewBox="0 0 50 30"><polyline points="5,25 15,25 25,15 35,5 45,5" fill="none" stroke="#ff0088" stroke-width="2"/></svg>
+          <span class="line-desc">Diagonal ↗</span>
+        </div>
+        <div class="payline-diagram">
+          <span class="line-num" style="background:#8800ff;">10</span>
+          <svg viewBox="0 0 50 30"><polyline points="5,15 15,5 25,15 35,25 45,15" fill="none" stroke="#8800ff" stroke-width="2"/></svg>
+          <span class="line-desc">Zigzag</span>
+        </div>
+      </div>
+
+      <h3>💰 Symbol Payouts</h3>
+      <p style="font-size: 10px; color: #888; margin-bottom: 8px;">Multipliers × bet per line (total bet ÷ 10)</p>
+
+      <div class="symbol-row premium">
+        <img src="assets/symbols/1.webp">
+        <div class="payout-info">
+          <strong>Grey Alien</strong>
+          <span class="payouts">×5: 5000 | ×4: 1000 | ×3: 100</span>
+        </div>
+      </div>
+      <div class="symbol-row premium">
+        <img src="assets/symbols/2.webp">
+        <div class="payout-info">
+          <strong>Agent</strong>
+          <span class="payouts">×5: 2000 | ×4: 500 | ×3: 50</span>
+        </div>
+      </div>
+      <div class="symbol-row high">
+        <img src="assets/symbols/3.webp">
+        <div class="payout-info">
+          <strong>Flying Saucer</strong>
+          <span class="payouts">×5: 750 | ×4: 100 | ×3: 30</span>
+        </div>
+      </div>
+      <div class="symbol-row high">
+        <img src="assets/symbols/4.webp">
+        <div class="payout-info">
+          <strong>Ray Gun</strong>
+          <span class="payouts">×5: 750 | ×4: 100 | ×3: 30</span>
+        </div>
+      </div>
+      <div class="symbol-row scatter-highlight">
+        <img src="assets/symbols/5.webp">
+        <div class="payout-info">
+          <strong style="color: #ffd700;">Classified File</strong>
+          <span class="payouts" style="color: #ffd700;">×5: 200 | ×4: 20 | ×3: 2 (×total bet)</span>
+        </div>
+      </div>
+      <div class="symbol-row medium">
+        <img src="assets/symbols/6.webp">
+        <div class="payout-info">
+          <strong>Atom</strong>
+          <span class="payouts">×5: 250 | ×4: 40 | ×3: 10</span>
+        </div>
+      </div>
+      <div class="symbol-row medium">
+        <img src="assets/symbols/7.webp">
+        <div class="payout-info">
+          <strong>Rocket</strong>
+          <span class="payouts">×5: 250 | ×4: 40 | ×3: 10</span>
+        </div>
+      </div>
+      <div class="symbol-row low">
+        <img src="assets/symbols/8.webp">
+        <div class="payout-info">
+          <strong>TV Static</strong>
+          <span class="payouts">×5: 100 | ×4: 15 | ×3: 5</span>
+        </div>
+      </div>
+      <div class="symbol-row low">
+        <img src="assets/symbols/9.webp">
+        <div class="payout-info">
+          <strong>Tinfoil Hat</strong>
+          <span class="payouts">×5: 100 | ×4: 15 | ×3: 5</span>
+        </div>
+      </div>
+      <div class="symbol-row low">
+        <img src="assets/symbols/10.webp">
+        <div class="payout-info">
+          <strong>Cow</strong>
+          <span class="payouts">×5: 100 | ×4: 15 | ×3: 5</span>
+        </div>
+      </div>
+
+      <h3>ℹ️ Game Info</h3>
+      <p>• RTP: ~96%</p>
+      <p>• Volatility: High</p>
+      <p>• Based on the classic "Book of" mechanic</p>
     </div>
     <button class="ctrl-btn" style="margin: 20px auto 0; display: block;" onclick="closeInfoPopup()">✓</button>
   </div>
@@ -1396,17 +2216,9 @@ function renderReels() {
     windowEl.className = 'reel-window';
     windowEl.id = `reel-window-${col}`;
 
-    // Add anticipation frame element
-    const frameEl = document.createElement('div');
-    frameEl.className = 'anticipation-frame';
-    frameEl.id = `anticipation-frame-${col}`;
-    windowEl.appendChild(frameEl);
-
-    // Add anticipation particles element
-    const particlesEl = document.createElement('div');
-    particlesEl.className = 'anticipation-particles';
-    particlesEl.id = `anticipation-particles-${col}`;
-    windowEl.appendChild(particlesEl);
+    // Add anticipation container with all effect elements
+    const anticipationContainer = createAnticipationContainer(col);
+    windowEl.appendChild(anticipationContainer);
 
     const stripEl = document.createElement('div');
     stripEl.className = 'reel-strip';
@@ -1421,6 +2233,74 @@ function renderReels() {
     windowEl.appendChild(stripEl);
     reelsEl.appendChild(windowEl);
   }
+}
+
+// Create anticipation effect container with all sub-elements
+// Layer order (bottom to top): border -> inner glow -> particles -> webp overlay -> scanline -> corners
+function createAnticipationContainer(reelIndex) {
+  const container = document.createElement('div');
+  container.className = 'anticipation-container';
+  container.id = `anticipation-container-${reelIndex}`;
+
+  // LAYER 1: Animated gradient border
+  const border = document.createElement('div');
+  border.className = 'anticipation-border';
+  container.appendChild(border);
+
+  // LAYER 2: Inner glow overlay
+  const innerGlow = document.createElement('div');
+  innerGlow.className = 'anticipation-glow-inner';
+  container.appendChild(innerGlow);
+
+  // LAYER 3: CSS Particle container (supplements webp)
+  const particlesContainer = document.createElement('div');
+  particlesContainer.className = 'anticipation-particles';
+  particlesContainer.id = `anticipation-particles-${reelIndex}`;
+
+  // Create CSS particles
+  const particleColors = ['green', 'gold', 'white'];
+  for (let i = 0; i < 18; i++) {
+    const particle = document.createElement('div');
+    particle.className = `anticipation-particle ${particleColors[i % 3]}`;
+    // Random horizontal position
+    particle.style.left = `${Math.random() * 85 + 7}%`;
+    // Staggered animation delay
+    particle.style.animationDelay = `${(i * 0.14)}s`;
+    particlesContainer.appendChild(particle);
+  }
+  container.appendChild(particlesContainer);
+
+  // LAYER 4: anticipation.webp overlay (the animated particle effect image)
+  const webpOverlay = document.createElement('div');
+  webpOverlay.className = 'anticipation-webp-overlay';
+  container.appendChild(webpOverlay);
+
+  // LAYER 5: Bright scanning line
+  const scanline = document.createElement('div');
+  scanline.className = 'anticipation-scanline';
+  container.appendChild(scanline);
+
+  // LAYER 6: Corner accents
+  ['top-left', 'top-right', 'bottom-left', 'bottom-right'].forEach(pos => {
+    const corner = document.createElement('div');
+    corner.className = `anticipation-corner ${pos}`;
+    container.appendChild(corner);
+  });
+
+  // Energy lines (for hot mode)
+  for (let i = 0; i < 3; i++) {
+    const energyLine = document.createElement('div');
+    energyLine.className = 'anticipation-energy-line';
+    container.appendChild(energyLine);
+  }
+
+  // Alert text (for hot mode)
+  const alert = document.createElement('div');
+  alert.className = 'anticipation-alert';
+  alert.textContent = 'ALERT';
+  container.appendChild(alert);
+
+  return container;
 }
 
 function updateUI() {
@@ -1712,37 +2592,39 @@ async function spin() {
   }
   console.log('Anticipation starts at reel:', anticipationStartReel);
 
-  // Helper function to show/hide anticipation effects
+  // Helper function to show/hide anticipation effects (CSS-based)
   function showAnticipation(reelIndex, isHot = false) {
-    const frame = document.getElementById(`anticipation-frame-${reelIndex}`);
-    const particles = document.getElementById(`anticipation-particles-${reelIndex}`);
-    const window = document.getElementById(`reel-window-${reelIndex}`);
+    const container = document.getElementById(`anticipation-container-${reelIndex}`);
 
-    if (frame) {
-      frame.classList.remove('normal', 'hot');
-      frame.classList.add(isHot ? 'hot' : 'normal', 'active');
-    }
-    if (particles) {
-      particles.classList.add('active');
-    }
-    if (window) {
-      window.classList.add('anticipation-glow');
+    if (container) {
+      container.classList.remove('hot');
+      container.classList.add('active');
+
+      if (isHot) {
+        container.classList.add('hot');
+        // Play hot anticipation sound (placeholder)
+        playAnticipationSound(true);
+      } else {
+        // Play normal anticipation sound (placeholder)
+        playAnticipationSound(false);
+      }
+
+      // Re-randomize particle positions for variety
+      const particles = container.querySelectorAll('.anticipation-particle');
+      particles.forEach((p, i) => {
+        p.style.left = `${Math.random() * 85 + 7}%`;
+        p.style.animationDelay = `${(i * (isHot ? 0.07 : 0.13))}s`;
+      });
     }
   }
 
   function hideAnticipation(reelIndex) {
-    const frame = document.getElementById(`anticipation-frame-${reelIndex}`);
-    const particles = document.getElementById(`anticipation-particles-${reelIndex}`);
-    const window = document.getElementById(`reel-window-${reelIndex}`);
+    const container = document.getElementById(`anticipation-container-${reelIndex}`);
 
-    if (frame) {
-      frame.classList.remove('active', 'normal', 'hot');
-    }
-    if (particles) {
-      particles.classList.remove('active');
-    }
-    if (window) {
-      window.classList.remove('anticipation-glow');
+    if (container) {
+      container.classList.remove('active', 'hot');
+      // Stop anticipation sound (placeholder)
+      stopAnticipationSound();
     }
   }
 
@@ -1910,6 +2792,9 @@ async function spin() {
         state.previousGain = 0;
         state.bonusTotalWin = 0;
         console.log('Entering bonus mode');
+
+        // Start bonus music
+        playBonusMusic();
       }
 
       // Show popup - for retrigger show +10, for initial show the total
@@ -1927,6 +2812,9 @@ async function spin() {
       state.spinning = false;
       spinBtn.disabled = false;
       spinBtn.classList.remove('spinning');
+
+      // Stop bonus music (fades out over 1s)
+      stopBonusMusic();
 
       // Wait a moment, then show bonus complete popup
       await new Promise(r => setTimeout(r, 1000));
@@ -2102,12 +2990,147 @@ function closeInfoPopup() {
 function toggleSound() {
   state.soundOn = !state.soundOn;
   const bgm = $('bgm');
+  const bonusMusic = $('bonusMusic');
+
   if (state.soundOn) {
     bgm.play().catch(e => console.log('Audio play failed'));
+    // Resume bonus music if we're in bonus mode
+    if (state.inBonusMode) {
+      bonusMusic.play().catch(e => console.log('Bonus music play failed'));
+    }
   } else {
     bgm.pause();
+    bonusMusic.pause();
   }
   $('soundBtn').classList.toggle('active', state.soundOn);
+}
+
+// ===========================================
+// BONUS MUSIC CONTROLS
+// ===========================================
+let bonusMusicFadeInterval = null;
+
+function playBonusMusic() {
+  if (!state.soundOn) return;
+
+  const bonusMusic = $('bonusMusic');
+  const bgm = $('bgm');
+
+  // Clear any existing fade
+  if (bonusMusicFadeInterval) {
+    clearInterval(bonusMusicFadeInterval);
+    bonusMusicFadeInterval = null;
+  }
+
+  // Fade out BGM
+  fadeAudio(bgm, 0, 500, () => {
+    bgm.pause();
+  });
+
+  // Start bonus music at 0 volume and fade in
+  bonusMusic.volume = 0;
+  bonusMusic.currentTime = 0;
+  bonusMusic.play().catch(e => console.log('Bonus music play failed:', e));
+
+  // Fade in over 0.5s
+  fadeAudio(bonusMusic, 0.5, 500);
+
+  console.log('[MUSIC] Bonus music started');
+}
+
+function stopBonusMusic() {
+  const bonusMusic = $('bonusMusic');
+  const bgm = $('bgm');
+
+  // Clear any existing fade
+  if (bonusMusicFadeInterval) {
+    clearInterval(bonusMusicFadeInterval);
+    bonusMusicFadeInterval = null;
+  }
+
+  // Fade out bonus music over 1s
+  fadeAudio(bonusMusic, 0, 1000, () => {
+    bonusMusic.pause();
+    bonusMusic.currentTime = 0;
+
+    // Fade BGM back in if sound is on
+    if (state.soundOn) {
+      bgm.volume = 0;
+      bgm.play().catch(e => console.log('BGM play failed'));
+      fadeAudio(bgm, 1, 500);
+    }
+  });
+
+  console.log('[MUSIC] Bonus music stopped');
+}
+
+function fadeAudio(audioElement, targetVolume, duration, callback) {
+  const startVolume = audioElement.volume;
+  const volumeDiff = targetVolume - startVolume;
+  const steps = 20;
+  const stepTime = duration / steps;
+  let currentStep = 0;
+
+  const fadeInterval = setInterval(() => {
+    currentStep++;
+    const progress = currentStep / steps;
+    // Ease out for smoother fade
+    const easeProgress = 1 - Math.pow(1 - progress, 2);
+    audioElement.volume = Math.max(0, Math.min(1, startVolume + (volumeDiff * easeProgress)));
+
+    if (currentStep >= steps) {
+      clearInterval(fadeInterval);
+      audioElement.volume = targetVolume;
+      if (callback) callback();
+    }
+  }, stepTime);
+
+  return fadeInterval;
+}
+
+// ===========================================
+// ANTICIPATION SOUND PLACEHOLDERS
+// ===========================================
+// These functions are hooks for adding anticipation sounds later.
+// To add sounds:
+// 1. Create audio elements: <audio id="anticipationSound" src="assets/anticipation.mp3"></audio>
+// 2. Create hot version: <audio id="anticipationHotSound" src="assets/anticipation-hot.mp3"></audio>
+// 3. Implement the functions below to play/stop the sounds
+
+let anticipationSoundPlaying = false;
+
+function playAnticipationSound(isHot = false) {
+  if (!state.soundOn) return;
+
+  // Placeholder - uncomment when audio files are added:
+  // const soundId = isHot ? 'anticipationHotSound' : 'anticipationSound';
+  // const sound = $(soundId);
+  // if (sound) {
+  //   sound.currentTime = 0;
+  //   sound.play().catch(e => console.log('Anticipation sound failed:', e));
+  //   anticipationSoundPlaying = true;
+  // }
+
+  // Console log for debugging/testing
+  console.log(`[SOUND] Anticipation ${isHot ? 'HOT' : 'normal'} - play()`);
+  anticipationSoundPlaying = true;
+}
+
+function stopAnticipationSound() {
+  if (!anticipationSoundPlaying) return;
+
+  // Placeholder - uncomment when audio files are added:
+  // const sounds = ['anticipationSound', 'anticipationHotSound'];
+  // sounds.forEach(id => {
+  //   const sound = $(id);
+  //   if (sound) {
+  //     sound.pause();
+  //     sound.currentTime = 0;
+  //   }
+  // });
+
+  console.log('[SOUND] Anticipation - stop()');
+  anticipationSoundPlaying = false;
 }
 
 // ===========================================
@@ -2148,6 +3171,7 @@ window.testBonus = function() {
     state.bonusTotalWin = 0;
     state.expandingSymbol = Math.floor(Math.random() * 9) + 1;
     updateUI();
+    playBonusMusic(); // Start bonus music
     console.log('Free spins mode active. Expanding symbol:', state.expandingSymbol);
   });
 };
@@ -2159,7 +3183,12 @@ window.testBonusRetrigger = function() {
 
 window.testBonusEnd = function() {
   console.log('Testing bonus end popup (UI only)...');
-  showBonusCompletePopup(1234.56);
+  stopBonusMusic(); // Stop bonus music with fade
+  showBonusCompletePopup(1234.56).then(() => {
+    state.inBonusMode = false;
+    state.freeSpins = 0;
+    updateUI();
+  });
 };
 
 window.testFreeSpins = function() {
@@ -2170,7 +3199,18 @@ window.testFreeSpins = function() {
   state.bonusTotalWin = 0;
   state.expandingSymbol = Math.floor(Math.random() * 9) + 1;
   updateUI();
+  playBonusMusic(); // Start bonus music
   console.log('Free spins activated! Expanding symbol:', state.expandingSymbol);
+};
+
+window.testBonusMusicOn = function() {
+  console.log('Testing bonus music ON...');
+  playBonusMusic();
+};
+
+window.testBonusMusicOff = function() {
+  console.log('Testing bonus music OFF...');
+  stopBonusMusic();
 };
 
 window.addBalance = function(amount = 1000) {
@@ -2216,51 +3256,99 @@ window.testSymbolRender = function(symId) {
 };
 
 window.testAnticipation = function() {
-  console.log('Testing anticipation effect on reels 3, 4, 5...');
+  console.log('Testing ENHANCED anticipation effects on reels 3, 4, 5...');
+  console.log('Watch for:');
+  console.log('  - BRIGHT green scanline sweeping up/down');
+  console.log('  - Pulsing glow border on container');
+  console.log('  - anticipation.webp particle overlay');
+  console.log('  - CSS particles floating up');
+  console.log('  - HOT mode: gold/green mix, screen shake, ALERT!');
 
-  function showAnticipation(reelIndex, isHot) {
-    const frame = document.getElementById(`anticipation-frame-${reelIndex}`);
-    const particles = document.getElementById(`anticipation-particles-${reelIndex}`);
-    const window = document.getElementById(`reel-window-${reelIndex}`);
-    if (frame) {
-      frame.classList.remove('normal', 'hot');
-      frame.classList.add(isHot ? 'hot' : 'normal', 'active');
+  function showAnticipationTest(reelIndex, isHot) {
+    const container = document.getElementById(`anticipation-container-${reelIndex}`);
+    if (container) {
+      container.classList.remove('hot');
+      container.classList.add('active');
+      if (isHot) container.classList.add('hot');
+
+      // Re-randomize particle positions
+      const particles = container.querySelectorAll('.anticipation-particle');
+      particles.forEach((p, i) => {
+        p.style.left = `${Math.random() * 85 + 7}%`;
+        p.style.animationDelay = `${(i * (isHot ? 0.07 : 0.13))}s`;
+      });
+
+      playAnticipationSound(isHot);
     }
-    if (particles) particles.classList.add('active');
-    if (window) window.classList.add('anticipation-glow');
   }
 
-  function hideAnticipation(reelIndex) {
-    const frame = document.getElementById(`anticipation-frame-${reelIndex}`);
-    const particles = document.getElementById(`anticipation-particles-${reelIndex}`);
-    const window = document.getElementById(`reel-window-${reelIndex}`);
-    if (frame) frame.classList.remove('active', 'normal', 'hot');
-    if (particles) particles.classList.remove('active');
-    if (window) window.classList.remove('anticipation-glow');
+  function hideAnticipationTest(reelIndex) {
+    const container = document.getElementById(`anticipation-container-${reelIndex}`);
+    if (container) {
+      container.classList.remove('active', 'hot');
+      stopAnticipationSound();
+    }
   }
 
   // Show anticipation on reels 3, 4 (normal) then 5 (hot)
   setTimeout(() => {
-    showAnticipation(2, false);
-    console.log('Anticipation (normal) on reel 3');
+    showAnticipationTest(2, false);
+    console.log('Reel 3: NORMAL anticipation (green glow, particles, scanline)');
   }, 0);
 
   setTimeout(() => {
-    hideAnticipation(2);
-    showAnticipation(3, false);
-    console.log('Anticipation (normal) on reel 4');
-  }, 1500);
+    hideAnticipationTest(2);
+    showAnticipationTest(3, false);
+    console.log('Reel 4: NORMAL anticipation');
+  }, 2000);
 
   setTimeout(() => {
-    hideAnticipation(3);
-    showAnticipation(4, true); // Hot mode for last reel
-    console.log('Anticipation (HOT) on reel 5');
-  }, 3000);
+    hideAnticipationTest(3);
+    showAnticipationTest(4, true);
+    console.log('Reel 5: HOT anticipation (gold/white, screen shake, ALERT flicker!)');
+  }, 4000);
 
   setTimeout(() => {
-    hideAnticipation(4);
-    console.log('Anticipation complete');
-  }, 5000);
+    hideAnticipationTest(4);
+    console.log('Anticipation test complete!');
+  }, 7000);
+};
+
+// Quick test for individual effects
+window.testAnticipationNormal = function(reelIndex = 2) {
+  const container = document.getElementById(`anticipation-container-${reelIndex}`);
+  if (container) {
+    container.classList.remove('hot');
+    container.classList.add('active');
+    console.log(`Normal anticipation ON for reel ${reelIndex + 1}`);
+    console.log('  - Green pulsing glow border');
+    console.log('  - BRIGHT scanline sweep');
+    console.log('  - anticipation.webp overlay');
+    console.log('  - Floating particles');
+    playAnticipationSound(false);
+  }
+};
+
+window.testAnticipationHot = function(reelIndex = 4) {
+  const container = document.getElementById(`anticipation-container-${reelIndex}`);
+  if (container) {
+    container.classList.add('active', 'hot');
+    console.log(`HOT anticipation ON for reel ${reelIndex + 1}`);
+    console.log('  - Gold/green intense glow');
+    console.log('  - MEGA BRIGHT scanline');
+    console.log('  - Screen shake effect');
+    console.log('  - ALERT flicker!');
+    playAnticipationSound(true);
+  }
+};
+
+window.testAnticipationOff = function() {
+  for (let i = 0; i < 5; i++) {
+    const container = document.getElementById(`anticipation-container-${i}`);
+    if (container) container.classList.remove('active', 'hot');
+  }
+  stopAnticipationSound();
+  console.log('All anticipation effects OFF');
 };
 
 // ===========================================
