@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>RealmFall</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background: #0a0a0f;
+            min-height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+        }
+
+        /* FULLSCREEN BACKGROUND */
+        .game-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: url('assets/bg.webp') center center / cover no-repeat;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 5px;
+            transition: background 0.5s ease;
+        }
+
+        .game-container.bonus-mode {
+            background: url('assets/bonus.webp') center center / cover no-repeat;
+        }
+
+        /* LOGO - at top */
+        .logo {
+            width: 280px;
+            height: auto;
+            margin-bottom: 0;
+            filter: drop-shadow(0 0 15px rgba(255, 150, 0, 0.5));
+        }
+
+        /* MULTIPLIER - positioned ON TOP of board, 182px from bottom
+           182 / 2170 = 8.39% from bottom
+           z-index 3 to be above board overlay (z-index 2) */
+        .multiplier-display {
+            position: absolute;
+            bottom: 8.39%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: url('assets/multi.webp') center center / contain no-repeat;
+            width: 35%;
+            height: 10%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        .mult-box {
+            width: 50px;
+            height: 35px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #666;
+            text-shadow: 1px 1px 2px #000;
+            transition: all 0.3s ease;
+            background: transparent;
+            border: none;
+        }
+
+        .mult-box.active {
+            color: #ffd700;
+            text-shadow: 0 0 8px #ffd700, 0 0 16px #ff9900;
+            transform: scale(1.1);
+        }
+
+        /* BOARD CONTAINER - moved up */
+        .reels-container {
+            position: relative;
+            flex-shrink: 0;
+            margin-top: -40px;
+        }
+
+        /* Board frame container - 1.5x scale, fits viewport
+           Original: 2713 x 2170 pixels
+           Aspect ratio: 2713 / 2170 = 1.2502
+           Base: 975px (1.5x of 650px)
+           Constrained to fit viewport without scrolling
+           Less header space needed since multiplier is inside board */
+        .reels-frame {
+            position: relative;
+            width: min(975px, 95vw, calc((100vh - 180px) * 1.2502));
+            aspect-ratio: 2713 / 2170;
+        }
+
+        /* Board backdrop - sits BEHIND symbols (z-index 0)
+           Same size as board.webp, perfectly aligned */
+        .reels-frame::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('assets/board2bck.webp') center center / 100% 100% no-repeat;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Board overlay - sits ON TOP of symbols (z-index 2)
+           Has transparent center so symbols show through */
+        .reels-frame::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('assets/board.webp') center center / 100% 100% no-repeat;
+            z-index: 2;
+            pointer-events: none; /* Clicks pass through to symbols */
+        }
+
+        /* Symbol grid - positioned inside gold outline using percentages
+           Original board: 2713 x 2170
+           Symbol area starts at: (310, 523)
+           Symbol area size: 2093 x 1247
+           Symbols: ~419x416 each, 5 cols x 3 rows
+           Percentages: left=11.43%, top=24.10%, width=77.15%, height=57.47% */
+        .reels {
+            position: absolute;
+            top: 24.10%;
+            left: 11.43%;
+            width: 77.15%;
+            height: 57.47%;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 0;
+            overflow: hidden; /* CRITICAL: clips falling symbols */
+            z-index: 1; /* Below board overlay */
+        }
+
+        /* Cell - fills grid cell, scales with board */
+        .cell {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        /* Symbol images - clean rendering, no filters */
+        .cell img {
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
+            display: block;
+            image-rendering: auto;
+            /* No filters - clean image */
+        }
+
+        /* Winning cells */
+        .cell.winning {
+            z-index: 5;
+        }
+
+        .cell.winning img {
+            animation: winPulse 0.5s ease-in-out infinite;
+        }
+
+        .cell.shattering img {
+            animation: explode 0.4s ease-out forwards;
+        }
+
+        @keyframes winPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); filter: brightness(1.3) drop-shadow(0 0 15px gold); }
+        }
+
+        @keyframes explode {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.6;
+                filter: brightness(1.5);
+            }
+            100% {
+                transform: scale(0);
+                opacity: 0;
+            }
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: linear-gradient(180deg, rgba(30, 20, 40, 0.95) 0%, rgba(15, 10, 20, 0.95) 100%);
+            padding: 15px 30px;
+            border-radius: 15px;
+            border: 2px solid #4a3a2a;
+        }
+
+        .info-box {
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .info-box .label {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .info-box .value {
+            font-size: 1.3rem;
+            color: #ffd700;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .spin-btn {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 4px solid #ffd700;
+            background: linear-gradient(180deg, #4a2a00 0%, #2a1500 100%);
+            color: #ffd700;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .spin-btn:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+
+        .spin-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .spin-btn.cascading {
+            animation: pulse 0.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.6); }
+        }
+
+        .bet-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .bet-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .bet-btn {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 2px solid #666;
+            background: #1a1a2a;
+            color: #ccc;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .bet-btn:hover {
+            border-color: #ffd700;
+            color: #ffd700;
+        }
+
+        .free-falls-indicator {
+            position: absolute;
+            top: 120px;
+            background: linear-gradient(180deg, #4a0a4a 0%, #2a052a 100%);
+            padding: 10px 25px;
+            border-radius: 10px;
+            border: 2px solid #ff00ff;
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.4);
+            display: none;
+        }
+
+        .free-falls-indicator.active {
+            display: block;
+            animation: glow 1s infinite alternate;
+        }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 20px rgba(255, 0, 255, 0.4); }
+            to { box-shadow: 0 0 40px rgba(255, 0, 255, 0.8); }
+        }
+
+        .free-falls-indicator span {
+            color: #ff66ff;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ff00ff;
+        }
+
+        .win-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4rem;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 30px #ff6600, 0 0 60px #ff3300, 3px 3px 6px #000;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .win-display.show {
+            animation: winPop 1.5s ease-out forwards;
+        }
+
+        @keyframes winPop {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            20% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+            80% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+        }
+
+        .cascade-multiplier {
+            position: absolute;
+            top: 170px;
+            font-size: 1.5rem;
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .cascade-multiplier.show {
+            opacity: 1;
+        }
+
+        /* Free Falls Bonus Popup */
+        .bonus-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+        }
+
+        .bonus-overlay.show {
+            display: flex;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .bonus-text {
+            font-size: 3rem;
+            color: #ff66ff;
+            text-shadow: 0 0 30px #ff00ff, 0 0 60px #aa00aa;
+            margin-bottom: 20px;
+            animation: bonusPulse 1s infinite alternate;
+        }
+
+        .bonus-spins {
+            font-size: 5rem;
+            color: #ffd700;
+            text-shadow: 0 0 30px #ff6600, 0 0 60px #ff3300;
+            margin-bottom: 30px;
+        }
+
+        .bonus-continue {
+            font-size: 1.2rem;
+            color: #aaa;
+            cursor: pointer;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes bonusPulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.5; }
+        }
+
+        /* Responsive - board auto-scales via min(), only adjust UI elements */
+        /* Multiplier uses percentages so scales with board automatically */
+        @media (max-width: 900px) {
+            .logo {
+                width: 220px;
+            }
+
+            .mult-box {
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .logo {
+                width: 180px;
+            }
+
+            .mult-box {
+                font-size: 0.8rem;
+            }
+
+            .spin-btn {
+                width: 70px;
+                height: 70px;
+                font-size: 0.8rem;
+            }
+
+            .controls {
+                padding: 10px 15px;
+                gap: 10px;
+            }
+
+            .info-box {
+                min-width: 60px;
+            }
+
+            .info-box .label {
+                font-size: 0.6rem;
+            }
+
+            .info-box .value {
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 550px) {
+            .game-container {
+                padding-top: 2px;
+            }
+
+            .logo {
+                width: 140px;
+            }
+
+            .mult-box {
+                font-size: 0.65rem;
+            }
+
+            .spin-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 0.7rem;
+            }
+
+            .controls {
+                padding: 8px 10px;
+                gap: 6px;
+            }
+
+            .info-box {
+                min-width: 50px;
+            }
+
+            .info-box .value {
+                font-size: 0.85rem;
+            }
+
+            .bet-btn {
+                width: 26px;
+                height: 26px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="game-container">
+        <img src="assets/logo.webp" alt="RealmFall" class="logo">
+
+        <div class="free-falls-indicator">
+            <span>FREE FALLS: <span id="free-falls-count">0</span></span>
+        </div>
+
+        <div class="cascade-multiplier" id="cascade-mult"></div>
+
+        <div class="reels-container">
+            <div class="reels-frame">
+                <div class="reels" id="reels"></div>
+                <!-- Multiplier positioned on top of board, 182px from bottom -->
+                <div class="multiplier-display">
+                    <div class="mult-box active" data-base="1" data-bonus="3">x1</div>
+                    <div class="mult-box" data-base="2" data-bonus="6">x2</div>
+                    <div class="mult-box" data-base="3" data-bonus="9">x3</div>
+                    <div class="mult-box" data-base="5" data-bonus="15">x5</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="win-display" id="win-display"></div>
+        
+        <div class="controls">
+            <div class="info-box">
+                <div class="label">Balance</div>
+                <div class="value" id="balance">1000</div>
+            </div>
+            
+            <div class="bet-controls">
+                <div class="info-box">
+                    <div class="label">Bet</div>
+                    <div class="value" id="bet">1.00</div>
+                </div>
+                <div class="bet-buttons">
+                    <button class="bet-btn" onclick="changeBet(-1)">−</button>
+                    <button class="bet-btn" onclick="changeBet(1)">+</button>
+                </div>
+            </div>
+            
+            <button class="spin-btn" id="spin-btn" onclick="startSpin()">DROP</button>
+            
+            <div class="info-box">
+                <div class="label">Win</div>
+                <div class="value" id="win">0</div>
+            </div>
+            
+            <div class="info-box">
+                <div class="label">Lines</div>
+                <div class="value">20</div>
+            </div>
+        </div>
+        
+        <div class="bonus-overlay" id="bonus-overlay">
+            <div class="bonus-text">⚡ REALM FRACTURE ⚡</div>
+            <div class="bonus-spins"><span id="bonus-spins-count">10</span> FREE FALLS</div>
+            <div class="bonus-continue" onclick="startFreeFalls()">TAP TO CONTINUE</div>
+        </div>
+    </div>
+
+    <script>
+        // Game Configuration
+        const CONFIG = {
+            apiBase: '',  // Use relative URLs - nginx proxies /game/ and /slot/ to the API
+            token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzbG90b3BvbCIsImV4cCI6NDg2NzQ0NzYxNywibmJmIjoxNzA2NjQ3NjE3LCJ1aWQiOjN9.6g2Hig9ErG8IbvzkPppry5F8HJsMunZPwuQzmetGh4c',
+            gameAlias: 'NetEnt/Gonzos Quest'
+        };
+
+        // Symbol mapping - API may return different IDs
+        // Gonzo's Quest typically has: 7 regular symbols + wild + scatter (free fall)
+        // We'll map both 0-indexed and 1-indexed to be safe
+        const SYMBOLS = {
+            // 0-indexed (in case API uses 0-8)
+            0: 'assets/symbols/1.webp',
+            // 1-indexed (1-9)
+            1: 'assets/symbols/1.webp',
+            2: 'assets/symbols/2.webp',
+            3: 'assets/symbols/3.webp',
+            4: 'assets/symbols/4.webp',
+            5: 'assets/symbols/5.webp',
+            6: 'assets/symbols/6.webp',
+            7: 'assets/symbols/7.webp',
+            8: 'assets/symbols/8.webp',  // Possibly wild
+            9: 'assets/symbols/9.webp',  // Possibly scatter/free fall
+            // Extended range (in case API uses 10+)
+            10: 'assets/symbols/9.webp',
+            11: 'assets/symbols/8.webp',
+            12: 'assets/symbols/7.webp'
+        };
+
+        // Bet amounts (total bet = bet * 20 lines)
+        const BETS = [0.20, 0.40, 0.60, 0.80, 1.00, 2.00, 5.00, 10.00];
+        const DEFAULT_BET_INDEX = 4; // 1.00
+
+        // Game State
+        let STATE = {
+            gid: null,
+            balance: 1000,
+            betIndex: DEFAULT_BET_INDEX,
+            bet: BETS[DEFAULT_BET_INDEX],
+            win: 0,
+            screen: null,
+            spinning: false,
+            freeFalls: 0,
+            inFreeFalls: false,
+            cascadeLevel: 0,
+            pendingFreeFalls: 0
+        };
+
+        // Multiplier values
+        const BASE_MULTIPLIERS = [1, 2, 3, 5];
+        const BONUS_MULTIPLIERS = [3, 6, 9, 15];
+
+        // Initialize
+        async function init() {
+            createGrid();
+            await createGame();
+        }
+
+        function createGrid() {
+            const reels = document.getElementById('reels');
+            reels.innerHTML = '';
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 5; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.innerHTML = '<img src="assets/symbols/1.webp" alt="">';
+                    reels.appendChild(cell);
+                }
+            }
+        }
+
+        async function api(endpoint, data = null) {
+            try {
+                const options = {
+                    method: data ? 'POST' : 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${CONFIG.token}`
+                    }
+                };
+                if (data) options.body = JSON.stringify(data);
+                const res = await fetch(`${CONFIG.apiBase}${endpoint}`, options);
+                return await res.json();
+            } catch (err) {
+                console.error('API Error:', err);
+                return null;
+            }
+        }
+
+        async function createGame() {
+            const res = await api('/game/new', {
+                cid: 1,
+                uid: 3,
+                alias: CONFIG.gameAlias
+            });
+            console.log('=== CREATE GAME DEBUG ===');
+            console.log('Full response:', JSON.stringify(res, null, 2));
+            if (res && res.gid) {
+                STATE.gid = res.gid;
+                STATE.balance = res.wallet || 1000;
+                // API returns screen in game.scr, not screen directly
+                if (res.game && res.game.scr) {
+                    STATE.screen = res.game.scr;
+                    console.log('Initial screen symbols:');
+                    res.game.scr.forEach((col, i) => console.log(`  Col ${i}:`, col));
+                    const allIds = new Set();
+                    res.game.scr.forEach(col => col.forEach(id => allIds.add(id)));
+                    console.log('Unique symbol IDs:', [...allIds].sort((a,b) => a-b));
+                    console.log('createGame: calling renderScreen with animate=false');
+                    renderScreen(res.game.scr, false);
+                }
+                updateDisplay();
+                console.log('Game created:', STATE.gid, 'Balance:', STATE.balance);
+            } else {
+                console.error('Failed to create game:', res);
+            }
+            console.log('=========================');
+        }
+
+        // Get cell dimensions dynamically for animation calculations
+        function getCellSize() {
+            const cell = document.querySelector('.cell');
+            if (cell) {
+                return cell.offsetHeight;
+            }
+            return 152; // fallback
+        }
+
+        // Track pending animation timeouts so we can cancel them
+        let pendingAnimations = [];
+
+        // DEBUG: Set to true to disable animation and test if flickering stops
+        // If flickering stops with this true, the bug is in animation timing
+        // If flickering continues, something else is changing symbols
+        const DEBUG_NO_ANIMATION = true;  // TEMP: testing without animation
+
+        // Render screen with drop animation (all symbols fall from above the grid)
+        // Called ONCE per spin - do NOT call multiple times
+        function renderScreen(screen, animate = true) {
+            console.log('=== renderScreen START ===');
+            console.log('animate=' + animate + ', DEBUG_NO_ANIMATION=' + DEBUG_NO_ANIMATION);
+
+            // Cancel any pending animations from previous render
+            pendingAnimations.forEach(id => clearTimeout(id));
+            pendingAnimations = [];
+
+            const cells = document.querySelectorAll('.cell');
+            const cellHeight = getCellSize();
+
+            // Log what symbols we're setting
+            console.log('Setting symbols:');
+            for (let col = 0; col < 5; col++) {
+                console.log(`  Col ${col}: [${screen[col].join(', ')}]`);
+            }
+
+            cells.forEach((cell, index) => {
+                const row = Math.floor(index / 5);
+                const col = index % 5;
+                const symbolId = screen[col][row];
+                const img = cell.querySelector('img');
+
+                // Clear any existing classes and styles immediately
+                cell.classList.remove('winning', 'shattering');
+                img.style.transition = 'none';
+                img.style.transform = '';
+
+                // Set symbol image
+                const mappedSrc = SYMBOLS[symbolId];
+                if (!mappedSrc) {
+                    console.warn(`UNMAPPED: cell ${index} (col=${col}, row=${row}) symbolId=${symbolId}`);
+                }
+
+                // Log each cell assignment
+                if (index === 0) {
+                    console.log(`Cell ${index}: col=${col}, row=${row}, symbolId=${symbolId}, src=${mappedSrc}`);
+                }
+
+                img.src = mappedSrc || SYMBOLS[1];
+
+                // DEBUG MODE: No animation
+                if (DEBUG_NO_ANIMATION || !animate) {
+                    img.style.transform = '';
+                    return;
+                }
+
+                // Animation: start above grid and fall down
+                const startAboveAmount = 50;
+                const fallDistance = startAboveAmount + (row * cellHeight);
+
+                // IMPORTANT: Hide image, position it, then show and animate
+                img.style.opacity = '0';
+                img.style.transform = `translateY(-${fallDistance}px)`;
+
+                // Force reflow
+                void img.offsetHeight;
+
+                // Stagger by column
+                const delay = col * 80;
+                const duration = 400 + row * 60;
+
+                // Make visible and start animation
+                const t1 = setTimeout(() => {
+                    img.style.opacity = '1';
+                    img.style.transition = `transform ${duration}ms cubic-bezier(0.33, 1, 0.68, 1)`;
+                    img.style.transform = 'translateY(0)';
+
+                    // Bounce on landing
+                    const t2 = setTimeout(() => {
+                        img.style.transition = 'transform 80ms ease-out';
+                        img.style.transform = 'translateY(-6px)';
+                        const t3 = setTimeout(() => {
+                            img.style.transition = 'transform 60ms ease-in';
+                            img.style.transform = 'translateY(0)';
+                            const t4 = setTimeout(() => {
+                                img.style.transition = '';
+                                img.style.transform = '';
+                            }, 60);
+                            pendingAnimations.push(t4);
+                        }, 80);
+                        pendingAnimations.push(t3);
+                    }, duration);
+                    pendingAnimations.push(t2);
+                }, delay);
+                pendingAnimations.push(t1);
+            });
+
+            console.log('=== renderScreen END ===');
+        }
+
+        function updateDisplay() {
+            // Format balance and bet to 2 decimal places for display
+            document.getElementById('balance').textContent = STATE.balance.toFixed(2);
+            document.getElementById('bet').textContent = STATE.bet.toFixed(2);
+            document.getElementById('win').textContent = STATE.win.toFixed(2);
+
+            // Update free falls indicator
+            const ffIndicator = document.querySelector('.free-falls-indicator');
+            if (STATE.freeFalls > 0 || STATE.inFreeFalls) {
+                ffIndicator.classList.add('active');
+                document.getElementById('free-falls-count').textContent = STATE.freeFalls;
+            } else {
+                ffIndicator.classList.remove('active');
+            }
+
+            // Update background for bonus mode
+            const gameContainer = document.getElementById('game-container');
+            if (STATE.inFreeFalls) {
+                gameContainer.classList.add('bonus-mode');
+            } else {
+                gameContainer.classList.remove('bonus-mode');
+            }
+        }
+
+        function updateMultiplierDisplay(level) {
+            const boxes = document.querySelectorAll('.mult-box');
+            const multipliers = STATE.inFreeFalls ? BONUS_MULTIPLIERS : BASE_MULTIPLIERS;
+
+            boxes.forEach((box, i) => {
+                box.classList.remove('active');
+                box.textContent = 'x' + multipliers[i];
+                if (i === level) {
+                    box.classList.add('active');
+                }
+            });
+
+            // Show cascade multiplier text
+            const cascadeMult = document.getElementById('cascade-mult');
+            if (level > 0) {
+                cascadeMult.textContent = `CASCADE x${multipliers[level]}!`;
+                cascadeMult.classList.add('show');
+            } else {
+                cascadeMult.classList.remove('show');
+            }
+        }
+
+        function changeBet(direction) {
+            if (STATE.spinning || STATE.freeFalls > 0) return;
+            // Cycle through BETS array
+            STATE.betIndex = Math.max(0, Math.min(BETS.length - 1, STATE.betIndex + direction));
+            STATE.bet = BETS[STATE.betIndex];
+            updateDisplay();
+        }
+
+        async function startSpin() {
+            console.log('startSpin called, spinning=' + STATE.spinning + ', gid=' + STATE.gid);
+            if (STATE.spinning) {
+                console.log('Already spinning, ignoring');
+                return;
+            }
+            if (!STATE.gid) {
+                console.log('No game ID, creating game first');
+                await createGame();
+                if (!STATE.gid) return;
+            }
+
+            // Check balance (skip if free falls)
+            if (STATE.freeFalls <= 0 && STATE.balance < STATE.bet) {
+                alert('Insufficient balance!');
+                return;
+            }
+
+            STATE.spinning = true;
+            STATE.win = 0;
+            STATE.cascadeLevel = 0;
+
+            updateMultiplierDisplay(0);
+
+            const spinBtn = document.getElementById('spin-btn');
+            spinBtn.disabled = true;
+            spinBtn.classList.add('cascading');
+
+            console.log('Calling doSpin...');
+            await doSpin();
+        }
+
+        async function doSpin() {
+            // API uses bet per line - with 20 lines, divide total bet by 20
+            const betPerLine = STATE.bet / 20;
+            const res = await api('/slot/spin', { gid: STATE.gid, bet: betPerLine });
+
+            if (!res) {
+                console.error('No response from spin');
+                endSpin();
+                return;
+            }
+
+            // Handle API errors
+            if (res.code || res.what) {
+                console.error('Spin error:', res.what || res.code);
+                alert(res.what || 'Spin failed');
+                endSpin();
+                return;
+            }
+
+            // Update state from response - API returns data in game object
+            if (res.wallet !== undefined) STATE.balance = res.wallet;
+
+            // Free falls remaining is in game.fsr (free spins remaining)
+            const newFreeFalls = (res.game && res.game.fsr !== undefined) ? res.game.fsr : 0;
+
+            // Screen is in game.scr - this is the FINAL screen after all cascades
+            let screen = null;
+            if (res.game && res.game.scr) {
+                screen = res.game.scr;
+            } else if (res.scr) {
+                screen = res.scr;
+            }
+
+            if (!screen) {
+                console.error('No screen in response');
+                endSpin();
+                return;
+            }
+
+            // DEBUG: Log raw screen data and symbol IDs
+            console.log('=== SPIN DEBUG ===');
+            console.log('Raw API response:', JSON.stringify(res, null, 2));
+            console.log('Screen array (5 cols x 3 rows):');
+            for (let col = 0; col < screen.length; col++) {
+                console.log(`  Col ${col}:`, screen[col], `-> symbols: ${screen[col].join(', ')}`);
+            }
+            // Collect all unique symbol IDs
+            const allSymbolIds = new Set();
+            screen.forEach(col => col.forEach(id => allSymbolIds.add(id)));
+            console.log('Unique symbol IDs in this spin:', [...allSymbolIds].sort((a,b) => a-b));
+            console.log('SYMBOLS mapping keys:', Object.keys(SYMBOLS));
+            // Check for unmapped symbols
+            const unmapped = [...allSymbolIds].filter(id => !SYMBOLS[id]);
+            if (unmapped.length > 0) {
+                console.warn('UNMAPPED SYMBOL IDS:', unmapped);
+            }
+            console.log('==================');
+
+            // Animate the FINAL screen (single drop animation)
+            console.log('doSpin: calling renderScreen with animate=true');
+            renderScreen(screen, true);
+            STATE.screen = screen;
+
+            // Wait for drop animation to complete
+            await sleep(800 + 5 * 100); // base time + column stagger
+
+            // Show wins if any (visual only - API already calculated everything)
+            if (res.wins && res.wins.length > 0) {
+                await showWins(res);
+            }
+
+            // Check for free falls trigger (entering bonus mode)
+            const previousFreeFalls = STATE.freeFalls;
+            if (newFreeFalls > 0 && !STATE.inFreeFalls && STATE.pendingFreeFalls === 0) {
+                STATE.pendingFreeFalls = newFreeFalls;
+                console.log('Free Falls triggered:', newFreeFalls);
+                showBonusPopup(newFreeFalls);
+            } else if (STATE.inFreeFalls && newFreeFalls > previousFreeFalls) {
+                // Retrigger during free falls
+                console.log('Free Falls retriggered:', newFreeFalls);
+                showBonusPopup(newFreeFalls - previousFreeFalls + 10);
+            }
+
+            STATE.freeFalls = newFreeFalls;
+            updateDisplay();
+
+            // Spin complete - single API call done
+            endSpin();
+        }
+
+        // Show wins visually (no recursive spin calls!)
+        async function showWins(res) {
+            // API returns wins with pay already including the multiplier
+            const totalWin = res.wins.reduce((sum, w) => sum + (w.pay || 0), 0);
+
+            // Get cascade/multiplier level from API
+            const cfn = (res.game && res.game.cfn) ? res.game.cfn : 1;
+            const cascadeIndex = Math.min(cfn - 1, 3);
+
+            STATE.win = totalWin;
+            STATE.cascadeLevel = cascadeIndex;
+
+            console.log('Win:', totalWin, 'Multiplier level:', cascadeIndex);
+
+            // Update multiplier display
+            updateMultiplierDisplay(cascadeIndex);
+
+            // Highlight winning cells
+            highlightWins(res.wins);
+
+            // Show win amount
+            showWinDisplay(totalWin);
+
+            // Wait to show winning symbols
+            await sleep(1500);
+
+            // Clear winning highlights
+            document.querySelectorAll('.cell.winning').forEach(cell => {
+                cell.classList.remove('winning');
+            });
+
+            // NO recursive doSpin() call - API already gave us final state
+        }
+
+        function highlightWins(wins) {
+            const cells = document.querySelectorAll('.cell');
+            wins.forEach(win => {
+                if (win.xy) {
+                    // API xy format: [[col, row], ...] where col=1-5, row=1-3 (1-indexed!)
+                    // Grid is laid out row by row: row0(col0-4), row1(col0-4), row2(col0-4)
+                    win.xy.forEach(([col1, row1]) => {
+                        const col = col1 - 1; // Convert to 0-indexed
+                        const row = row1 - 1;
+                        const index = row * 5 + col;
+                        console.log(`Highlight: col=${col}, row=${row}, index=${index}`);
+                        if (cells[index]) {
+                            cells[index].classList.add('winning');
+                        }
+                    });
+                }
+            });
+        }
+
+        function showWinDisplay(amount) {
+            const display = document.getElementById('win-display');
+            display.textContent = '+' + amount;
+            display.classList.remove('show');
+            void display.offsetWidth; // Force reflow
+            display.classList.add('show');
+            
+            document.getElementById('win').textContent = STATE.win;
+        }
+
+        function showBonusPopup(spins) {
+            document.getElementById('bonus-spins-count').textContent = spins;
+            document.getElementById('bonus-overlay').classList.add('show');
+        }
+
+        function startFreeFalls() {
+            document.getElementById('bonus-overlay').classList.remove('show');
+            STATE.inFreeFalls = true;
+            STATE.freeFalls = STATE.pendingFreeFalls;
+            STATE.pendingFreeFalls = 0;
+            updateMultiplierDisplay(0);
+            updateDisplay();
+            endSpin();
+        }
+
+        function endSpin() {
+            STATE.spinning = false;
+            STATE.cascadeLevel = 0;
+            updateMultiplierDisplay(0);
+
+            const spinBtn = document.getElementById('spin-btn');
+            spinBtn.disabled = false;
+            spinBtn.classList.remove('cascading');
+
+            // Check if free falls ended
+            if (STATE.inFreeFalls && STATE.freeFalls <= 0) {
+                STATE.inFreeFalls = false;
+                console.log('Free Falls bonus ended! Total win:', STATE.win);
+                // Could show bonus end popup here
+            }
+
+            // Update button text based on mode
+            spinBtn.textContent = STATE.freeFalls > 0 ? 'FREE' : 'DROP';
+
+            updateDisplay();
+            console.log('Spin ended. Balance:', STATE.balance, 'Win:', STATE.win, 'Free Falls:', STATE.freeFalls);
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Preload images
+        function preloadImages() {
+            Object.values(SYMBOLS).forEach(src => {
+                const img = new Image();
+                img.src = src;
+            });
+        }
+
+        // Start
+        preloadImages();
+        init();
+    </script>
+</body>
+</html>
