@@ -1,1116 +1,2269 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>RealmFall</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Georgia', serif;
-            background: #0a0a0f;
-            min-height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-        }
-
-        /* FULLSCREEN BACKGROUND */
-        .game-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: url('assets/bg.webp') center center / cover no-repeat;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            padding-top: 5px;
-            transition: background 0.5s ease;
-        }
-
-        .game-container.bonus-mode {
-            background: url('assets/bonus.webp') center center / cover no-repeat;
-        }
-
-        /* LOGO - at top */
-        .logo {
-            width: 280px;
-            height: auto;
-            margin-bottom: 0;
-            filter: drop-shadow(0 0 15px rgba(255, 150, 0, 0.5));
-        }
-
-        /* MULTIPLIER - positioned ON TOP of board, 182px from bottom
-           182 / 2170 = 8.39% from bottom
-           z-index 3 to be above board overlay (z-index 2) */
-        .multiplier-display {
-            position: absolute;
-            bottom: 8.39%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: url('assets/multi.webp') center center / contain no-repeat;
-            width: 35%;
-            height: 10%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 6px;
-            z-index: 3;
-            pointer-events: none;
-        }
-
-        .mult-box {
-            width: 50px;
-            height: 35px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 1rem;
-            font-weight: bold;
-            color: #666;
-            text-shadow: 1px 1px 2px #000;
-            transition: all 0.3s ease;
-            background: transparent;
-            border: none;
-        }
-
-        .mult-box.active {
-            color: #ffd700;
-            text-shadow: 0 0 8px #ffd700, 0 0 16px #ff9900;
-            transform: scale(1.1);
-        }
-
-        /* BOARD CONTAINER - moved up */
-        .reels-container {
-            position: relative;
-            flex-shrink: 0;
-            margin-top: -40px;
-        }
-
-        /* Board frame container - 1.5x scale, fits viewport
-           Original: 2713 x 2170 pixels
-           Aspect ratio: 2713 / 2170 = 1.2502
-           Base: 975px (1.5x of 650px)
-           Constrained to fit viewport without scrolling
-           Less header space needed since multiplier is inside board */
-        .reels-frame {
-            position: relative;
-            width: min(975px, 95vw, calc((100vh - 180px) * 1.2502));
-            aspect-ratio: 2713 / 2170;
-        }
-
-        /* Board backdrop - sits BEHIND symbols (z-index 0)
-           Same size as board.webp, perfectly aligned */
-        .reels-frame::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: url('assets/board2bck.webp') center center / 100% 100% no-repeat;
-            z-index: 0;
-            pointer-events: none;
-        }
-
-        /* Board overlay - sits ON TOP of symbols (z-index 2)
-           Has transparent center so symbols show through */
-        .reels-frame::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: url('assets/board.webp') center center / 100% 100% no-repeat;
-            z-index: 2;
-            pointer-events: none; /* Clicks pass through to symbols */
-        }
-
-        /* Symbol grid - positioned inside gold outline using percentages
-           Original board: 2713 x 2170
-           Symbol area starts at: (310, 523)
-           Symbol area size: 2093 x 1247
-           Symbols: ~419x416 each, 5 cols x 3 rows
-           Percentages: left=11.43%, top=24.10%, width=77.15%, height=57.47% */
-        .reels {
-            position: absolute;
-            top: 24.10%;
-            left: 11.43%;
-            width: 77.15%;
-            height: 57.47%;
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            grid-template-rows: repeat(3, 1fr);
-            gap: 0;
-            overflow: hidden; /* CRITICAL: clips falling symbols */
-            z-index: 1; /* Below board overlay */
-        }
-
-        /* Cell - fills grid cell, scales with board */
-        .cell {
-            width: 100%;
-            height: 100%;
-            position: relative;
-            background: none;
-            border: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        /* Symbol images - clean rendering, no filters */
-        .cell img {
-            width: 100%;
-            height: 100%;
-            object-fit: fill;
-            display: block;
-            image-rendering: auto;
-            /* No filters - clean image */
-        }
-
-        /* Winning cells */
-        .cell.winning {
-            z-index: 5;
-        }
-
-        .cell.winning img {
-            animation: winPulse 0.5s ease-in-out infinite;
-        }
-
-        .cell.shattering img {
-            animation: explode 0.4s ease-out forwards;
-        }
-
-        @keyframes winPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.08); filter: brightness(1.3) drop-shadow(0 0 15px gold); }
-        }
-
-        @keyframes explode {
-            0% {
-                transform: scale(1);
-                opacity: 1;
-            }
-            50% {
-                transform: scale(1.2);
-                opacity: 0.6;
-                filter: brightness(1.5);
-            }
-            100% {
-                transform: scale(0);
-                opacity: 0;
-            }
-        }
-
-        .controls {
-            position: absolute;
-            bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            background: linear-gradient(180deg, rgba(30, 20, 40, 0.95) 0%, rgba(15, 10, 20, 0.95) 100%);
-            padding: 15px 30px;
-            border-radius: 15px;
-            border: 2px solid #4a3a2a;
-        }
-
-        .info-box {
-            text-align: center;
-            min-width: 100px;
-        }
-
-        .info-box .label {
-            font-size: 0.75rem;
-            color: #888;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .info-box .value {
-            font-size: 1.3rem;
-            color: #ffd700;
-            font-weight: bold;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-        }
-
-        .spin-btn {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            border: 4px solid #ffd700;
-            background: linear-gradient(180deg, #4a2a00 0%, #2a1500 100%);
-            color: #ffd700;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-        }
-
-        .spin-btn:hover:not(:disabled) {
-            transform: scale(1.05);
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
-        }
-
-        .spin-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .spin-btn.cascading {
-            animation: pulse 0.5s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
-            50% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.6); }
-        }
-
-        .bet-controls {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .bet-buttons {
-            display: flex;
-            gap: 5px;
-        }
-
-        .bet-btn {
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            border: 2px solid #666;
-            background: #1a1a2a;
-            color: #ccc;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .bet-btn:hover {
-            border-color: #ffd700;
-            color: #ffd700;
-        }
-
-        .free-falls-indicator {
-            position: absolute;
-            top: 120px;
-            background: linear-gradient(180deg, #4a0a4a 0%, #2a052a 100%);
-            padding: 10px 25px;
-            border-radius: 10px;
-            border: 2px solid #ff00ff;
-            box-shadow: 0 0 20px rgba(255, 0, 255, 0.4);
-            display: none;
-        }
-
-        .free-falls-indicator.active {
-            display: block;
-            animation: glow 1s infinite alternate;
-        }
-
-        @keyframes glow {
-            from { box-shadow: 0 0 20px rgba(255, 0, 255, 0.4); }
-            to { box-shadow: 0 0 40px rgba(255, 0, 255, 0.8); }
-        }
-
-        .free-falls-indicator span {
-            color: #ff66ff;
-            font-size: 1.2rem;
-            font-weight: bold;
-            text-shadow: 0 0 10px #ff00ff;
-        }
-
-        .win-display {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 4rem;
-            font-weight: bold;
-            color: #ffd700;
-            text-shadow: 0 0 30px #ff6600, 0 0 60px #ff3300, 3px 3px 6px #000;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 100;
-        }
-
-        .win-display.show {
-            animation: winPop 1.5s ease-out forwards;
-        }
-
-        @keyframes winPop {
-            0% {
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(0.5);
-            }
-            20% {
-                opacity: 1;
-                transform: translate(-50%, -50%) scale(1.2);
-            }
-            80% {
-                opacity: 1;
-                transform: translate(-50%, -50%) scale(1);
-            }
-            100% {
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(0.8);
-            }
-        }
-
-        .cascade-multiplier {
-            position: absolute;
-            top: 170px;
-            font-size: 1.5rem;
-            color: #ffd700;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .cascade-multiplier.show {
-            opacity: 1;
-        }
-
-        /* Free Falls Bonus Popup */
-        .bonus-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            flex-direction: column;
-        }
-
-        .bonus-overlay.show {
-            display: flex;
-            animation: fadeIn 0.5s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .bonus-text {
-            font-size: 3rem;
-            color: #ff66ff;
-            text-shadow: 0 0 30px #ff00ff, 0 0 60px #aa00aa;
-            margin-bottom: 20px;
-            animation: bonusPulse 1s infinite alternate;
-        }
-
-        .bonus-spins {
-            font-size: 5rem;
-            color: #ffd700;
-            text-shadow: 0 0 30px #ff6600, 0 0 60px #ff3300;
-            margin-bottom: 30px;
-        }
-
-        .bonus-continue {
-            font-size: 1.2rem;
-            color: #aaa;
-            cursor: pointer;
-            animation: blink 1s infinite;
-        }
-
-        @keyframes bonusPulse {
-            from { transform: scale(1); }
-            to { transform: scale(1.05); }
-        }
-
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0.5; }
-        }
-
-        /* Responsive - board auto-scales via min(), only adjust UI elements */
-        /* Multiplier uses percentages so scales with board automatically */
-        @media (max-width: 900px) {
-            .logo {
-                width: 220px;
-            }
-
-            .mult-box {
-                font-size: 0.9rem;
-            }
-        }
-
-        @media (max-width: 720px) {
-            .logo {
-                width: 180px;
-            }
-
-            .mult-box {
-                font-size: 0.8rem;
-            }
-
-            .spin-btn {
-                width: 70px;
-                height: 70px;
-                font-size: 0.8rem;
-            }
-
-            .controls {
-                padding: 10px 15px;
-                gap: 10px;
-            }
-
-            .info-box {
-                min-width: 60px;
-            }
-
-            .info-box .label {
-                font-size: 0.6rem;
-            }
-
-            .info-box .value {
-                font-size: 0.9rem;
-            }
-        }
-
-        @media (max-width: 550px) {
-            .game-container {
-                padding-top: 2px;
-            }
-
-            .logo {
-                width: 140px;
-            }
-
-            .mult-box {
-                font-size: 0.65rem;
-            }
-
-            .spin-btn {
-                width: 60px;
-                height: 60px;
-                font-size: 0.7rem;
-            }
-
-            .controls {
-                padding: 8px 10px;
-                gap: 6px;
-            }
-
-            .info-box {
-                min-width: 50px;
-            }
-
-            .info-box .value {
-                font-size: 0.85rem;
-            }
-
-            .bet-btn {
-                width: 26px;
-                height: 26px;
-                font-size: 0.9rem;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>RealmFall</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Georgia', serif;
+    background: #000;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+/* Layer 1: Full screen background */
+.game-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: url('assets/bg.webp') center/cover no-repeat;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Logo */
+.logo {
+    width: 280px;
+    margin-top: 10px;
+    filter: drop-shadow(0 0 15px rgba(255, 150, 0, 0.5));
+}
+
+/* Board wrapper - maintains 2713:2170 aspect ratio */
+.board-wrapper {
+    position: relative;
+    width: min(900px, 95vw);
+    height: min(720px, calc(95vw / 1.25));
+    margin-top: -40px;
+    overflow: visible;
+}
+
+/* Layer 1: Backdrop behind symbols */
+.board-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.board-backdrop img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+}
+
+/* Layer 2: Reels clip wrapper - clips falling symbols */
+.reels-clip {
+    position: absolute;
+    left: 11.43%;
+    top: 24.10%;
+    width: 77.15%;
+    height: 57.47%;
+    z-index: 5;
+    overflow: hidden;
+}
+
+/* Symbol container - absolute positioning for true movement */
+.reels {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.symbol {
+    position: absolute;
+    width: 20%;  /* 100% / 5 columns */
+    height: 33.33%;  /* 100% / 3 rows */
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    transition: top 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s, transform 0.25s;
+    will-change: top, opacity, transform;
+}
+
+.symbol.winning {
+    z-index: 20;
+    animation: pulse 0.25s ease-in-out 3;
+    box-shadow: 0 0 20px 5px gold, 0 0 40px 10px rgba(255, 215, 0, 0.5);
+    border: 3px solid gold;
+    border-radius: 8px;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* Scatter Anticipation Effects */
+.symbol.scatter-hit {
+    z-index: 25;
+    animation: scatterPulse 0.5s ease-in-out infinite;
+}
+
+@keyframes scatterPulse {
+    0%, 100% {
+        filter: brightness(1) drop-shadow(0 0 10px gold);
+    }
+    50% {
+        filter: brightness(1.5) drop-shadow(0 0 25px gold) drop-shadow(0 0 40px orange);
+    }
+}
+
+.anticipation-active .board-backdrop {
+    filter: brightness(0.6);
+    transition: filter 0.3s;
+}
+
+.anticipation-active .board-frame img {
+    filter: drop-shadow(0 0 20px rgba(255, 200, 0, 0.8));
+    animation: frameGlow 0.4s ease-in-out infinite;
+}
+
+@keyframes frameGlow {
+    0%, 100% { filter: drop-shadow(0 0 15px rgba(255, 200, 0, 0.6)); }
+    50% { filter: drop-shadow(0 0 30px rgba(255, 200, 0, 1)); }
+}
+
+.symbol.anticipation-target {
+    animation: reelAnticipation 0.3s ease-in-out infinite;
+}
+
+@keyframes reelAnticipation {
+    0%, 100% { box-shadow: inset 0 0 20px rgba(255, 215, 0, 0.3); }
+    50% { box-shadow: inset 0 0 40px rgba(255, 215, 0, 0.6); }
+}
+
+.screen-shake {
+    animation: shake 0.1s ease-in-out infinite;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    75% { transform: translateX(2px); }
+}
+
+/* Layer 3: Board frame overlay */
+.board-frame {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.board-frame img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+}
+
+/* Layer 4: Multiplier frame with image */
+.multiplier-frame {
+    position: absolute;
+    bottom: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 15;
+}
+
+.multiplier-frame img {
+    width: auto;
+    height: 60px;
+    display: block;
+}
+
+.multiplier-value {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #ffd700;
+    text-shadow: 0 0 10px #ffd700, 2px 2px 4px #000;
+}
+
+.multiplier-glow {
+    animation: multGlow 0.5s ease-out;
+}
+
+@keyframes multGlow {
+    0% { transform: translate(-50%, -50%) scale(1.5); color: #fff; }
+    100% { transform: translate(-50%, -50%) scale(1); color: #ffd700; }
+}
+
+/* Controls */
+.controls {
+    position: fixed;
+    bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: rgba(15, 10, 25, 0.95);
+    padding: 12px 25px;
+    border-radius: 12px;
+    border: 2px solid #3a2a1a;
+}
+
+.stat {
+    text-align: center;
+    min-width: 70px;
+}
+
+.stat-label {
+    font-size: 0.65rem;
+    color: #777;
+    text-transform: uppercase;
+}
+
+.stat-value {
+    font-size: 1.1rem;
+    color: #ffd700;
+    font-weight: bold;
+}
+
+.spin-btn {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 3px solid #ffd700;
+    background: linear-gradient(180deg, #3a2000 0%, #1a1000 100%);
+    color: #ffd700;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+}
+
+.spin-btn:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+.spin-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.bet-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+
+.bet-btns {
+    display: flex;
+    gap: 5px;
+}
+
+.bet-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid #555;
+    background: #1a1a2a;
+    color: #aaa;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.bet-btn:hover {
+    border-color: #ffd700;
+    color: #ffd700;
+}
+
+/* Win display */
+.win-display {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    font-size: 3rem;
+    font-weight: bold;
+    color: #ffd700;
+    text-shadow: 0 0 30px #ff6600, 3px 3px 0 #000;
+    z-index: 100;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+}
+
+.win-display.show {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+}
+
+/* Free falls banner */
+.ff-banner {
+    position: absolute;
+    top: 80px;
+    background: linear-gradient(180deg, #4a0a4a, #2a052a);
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: 2px solid #ff00ff;
+    color: #ff88ff;
+    font-weight: bold;
+    display: none;
+    z-index: 10;
+}
+
+.ff-banner.show { display: block; }
+
+/* Responsive */
+@media (max-width: 600px) {
+    .logo { width: 200px; }
+    .board-wrapper { width: 95vw; }
+    .controls { padding: 8px 15px; gap: 10px; }
+    .spin-btn { width: 55px; height: 55px; font-size: 0.7rem; }
+    .stat { min-width: 50px; }
+    .stat-value { font-size: 0.9rem; }
+    .multiplier-frame img { height: 45px; }
+    .multiplier-value { font-size: 1.2rem; }
+}
+
+/* ===== PORTAL OVERLAY - Modern Glass Effect ===== */
+.portal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.6s ease, background 0.6s ease;
+}
+
+.portal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+    background: rgba(0, 0, 0, 0.85);
+}
+
+.portal-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transform: scale(0.8) translateY(30px);
+    opacity: 0;
+    transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.5s ease;
+}
+
+.portal-overlay.active .portal-container {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+.portal-stone {
+    width: 550px;
+    max-width: 90vw;
+    height: auto;
+    filter: drop-shadow(0 20px 60px rgba(255, 170, 0, 0.4))
+            drop-shadow(0 0 30px rgba(255, 100, 0, 0.3));
+    animation: stoneFloat 3s ease-in-out infinite;
+}
+
+@keyframes stoneFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.portal-text-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+}
+
+.portal-title {
+    font-family: 'Georgia', serif;
+    font-size: 38px;
+    font-weight: bold;
+    color: #ffd700;
+    text-shadow:
+        0 0 10px rgba(255, 200, 0, 0.8),
+        0 0 30px rgba(255, 150, 0, 0.6),
+        0 2px 4px rgba(0, 0, 0, 0.9);
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    opacity: 0;
+    transform: translateY(-20px);
+    animation: textSlideIn 0.6s ease 0.4s forwards;
+}
+
+.portal-count {
+    font-family: 'Georgia', serif;
+    font-size: 80px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow:
+        0 0 20px rgba(255, 200, 0, 1),
+        0 0 40px rgba(255, 150, 0, 0.8),
+        0 0 60px rgba(255, 100, 0, 0.5),
+        0 3px 6px rgba(0, 0, 0, 0.9);
+    opacity: 0;
+    transform: scale(0.5);
+    animation: countPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.6s forwards;
+}
+
+.portal-subtitle {
+    font-family: 'Georgia', serif;
+    font-size: 24px;
+    color: #ffcc00;
+    text-shadow: 0 0 10px rgba(255, 200, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.8);
+    letter-spacing: 3px;
+    opacity: 0;
+    animation: textSlideIn 0.6s ease 0.8s forwards;
+}
+
+/* Win display for end of free spins */
+.portal-win-display {
+    font-family: 'Georgia', serif;
+    font-size: 28px;
+    color: #ffd700;
+    text-shadow: 0 0 15px rgba(255, 200, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.9);
+    margin-top: 15px;
+    opacity: 0;
+    animation: textSlideIn 0.6s ease 1s forwards;
+}
+
+.portal-win-amount {
+    font-size: 52px;
+    color: #fff;
+    display: block;
+    margin-top: 5px;
+    text-shadow:
+        0 0 20px rgba(255, 200, 0, 1),
+        0 0 40px rgba(255, 150, 0, 0.8);
+}
+
+@keyframes textSlideIn {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes countPop {
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Particle effects */
+.portal-particles {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.portal-particles span {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: radial-gradient(circle, #ffd700 0%, #ff8800 100%);
+    border-radius: 50%;
+    opacity: 0;
+    box-shadow: 0 0 10px #ffd700, 0 0 20px #ff8800;
+}
+
+.portal-overlay.active .portal-particles span {
+    animation: particleFly 2.5s ease-out infinite;
+}
+
+.portal-particles span:nth-child(1) { --tx: 200px; --ty: 0; animation-delay: 0s; }
+.portal-particles span:nth-child(2) { --tx: 130px; --ty: -130px; animation-delay: 0.3s; }
+.portal-particles span:nth-child(3) { --tx: 0; --ty: -200px; animation-delay: 0.6s; }
+.portal-particles span:nth-child(4) { --tx: -130px; --ty: -130px; animation-delay: 0.9s; }
+.portal-particles span:nth-child(5) { --tx: -200px; --ty: 0; animation-delay: 1.2s; }
+.portal-particles span:nth-child(6) { --tx: -130px; --ty: 130px; animation-delay: 1.5s; }
+.portal-particles span:nth-child(7) { --tx: 0; --ty: 200px; animation-delay: 1.8s; }
+.portal-particles span:nth-child(8) { --tx: 130px; --ty: 130px; animation-delay: 2.1s; }
+
+@keyframes particleFly {
+    0% {
+        transform: translate(0, 0) scale(0);
+        opacity: 0;
+    }
+    15% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1.2);
+    }
+    100% {
+        transform: translate(var(--tx), var(--ty)) scale(0);
+        opacity: 0;
+    }
+}
+
+/* Closing animation */
+.portal-overlay.closing .portal-container {
+    transform: scale(0.8) translateY(-30px);
+    opacity: 0;
+    transition: transform 0.5s ease-in, opacity 0.4s ease;
+}
+
+.portal-overlay.closing {
+    background: rgba(0, 0, 0, 0);
+}
+
+/* ===== BIG WIN OVERLAY ===== */
+.bigwin-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    background: rgba(0, 0, 0, 0.85);
+    transition: opacity 0.3s, visibility 0.3s;
+}
+
+.bigwin-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.bigwin-beam {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scaleX(0);
+    width: 120%;
+    max-width: 1200px;
+    height: auto;
+    pointer-events: none;
+    z-index: 2001;
+    opacity: 0;
+}
+
+.bigwin-overlay.active .bigwin-beam {
+    animation: beamIn 0.5s ease-out forwards;
+}
+
+@keyframes beamIn {
+    0% { transform: translate(-50%, -50%) scaleX(0) scaleY(0.5); opacity: 0; }
+    50% { transform: translate(-50%, -50%) scaleX(1.2) scaleY(1.2); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scaleX(1) scaleY(1); opacity: 0.9; }
+}
+
+.bigwin-lightning {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px;
+    max-width: 80vw;
+    height: auto;
+    pointer-events: none;
+    z-index: 2002;
+    opacity: 0;
+}
+
+.bigwin-overlay.active .bigwin-lightning {
+    animation: bigwinLightningFlash 0.8s ease-out forwards;
+}
+
+@keyframes bigwinLightningFlash {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+    40% { opacity: 0.3; transform: translate(-50%, -50%) scale(1.1); }
+    60% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+    80% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+}
+
+.bigwin-content {
+    position: relative;
+    z-index: 2003;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transform: scale(0) rotate(-10deg);
+}
+
+.bigwin-overlay.active .bigwin-content {
+    animation: bigwinSlabIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s forwards;
+}
+
+@keyframes bigwinSlabIn {
+    0% { transform: scale(0) rotate(-10deg); }
+    60% { transform: scale(1.1) rotate(2deg); }
+    100% { transform: scale(1) rotate(0deg); }
+}
+
+.bigwin-slab {
+    width: 500px;
+    max-width: 85vw;
+    height: auto;
+}
+
+.bigwin-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    width: 80%;
+}
+
+.bigwin-tier {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(28px, 6vw, 48px);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 6px;
+    animation: tierPulse 1.5s ease-in-out infinite;
+    -webkit-text-stroke: 2px rgba(0,0,0,0.5);
+}
+
+.bigwin-tier.big {
+    color: #ffd700;
+    text-shadow: 0 0 20px #ffd700, 0 0 40px #ff8c00, 0 0 60px #ff4500, 2px 2px 4px rgba(0,0,0,0.8);
+}
+
+.bigwin-tier.mega {
+    color: #ff6600;
+    text-shadow: 0 0 20px #ff6600, 0 0 40px #ff0000, 0 0 60px #ff0066, 2px 2px 4px rgba(0,0,0,0.8);
+}
+
+.bigwin-tier.epic {
+    color: #ff00ff;
+    text-shadow: 0 0 20px #ff00ff, 0 0 40px #9900ff, 0 0 60px #0066ff, 0 0 80px #00ffff, 2px 2px 4px rgba(0,0,0,0.8);
+}
+
+@keyframes tierPulse {
+    0%, 100% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.05); filter: brightness(1.3); }
+}
+
+.bigwin-amount {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(36px, 10vw, 72px);
+    font-weight: 900;
+    color: #ffffff;
+    margin-top: 5px;
+    text-shadow: 0 0 10px #ffffff, 0 0 20px #00ffff, 0 0 30px #00ffff, 3px 3px 6px rgba(0,0,0,0.9);
+    -webkit-text-stroke: 1px rgba(0,0,0,0.3);
+    animation: amountGlow 2s ease-in-out infinite;
+}
+
+@keyframes amountGlow {
+    0%, 100% { text-shadow: 0 0 10px #ffffff, 0 0 20px #00ffff, 0 0 30px #00ffff, 3px 3px 6px rgba(0,0,0,0.9); }
+    50% { text-shadow: 0 0 20px #ffffff, 0 0 40px #00ffff, 0 0 60px #00ffff, 3px 3px 6px rgba(0,0,0,0.9); }
+}
+
+.bigwin-overlay.closing .bigwin-content {
+    animation: bigwinSlabOut 0.4s ease-in forwards;
+}
+
+.bigwin-overlay.closing .bigwin-beam,
+.bigwin-overlay.closing .bigwin-lightning {
+    animation: fadeOut 0.3s ease-in forwards;
+}
+
+@keyframes bigwinSlabOut {
+    to { transform: scale(0) rotate(10deg); opacity: 0; }
+}
+
+@keyframes fadeOut {
+    to { opacity: 0; }
+}
+
+/* ===== EPIC FREE SPINS OVERLAY ===== */
+.freespins-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    background: rgba(0, 0, 0, 0);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, background 0.3s;
+}
+
+.freespins-overlay.active {
+    opacity: 1;
+    visibility: visible;
+    background: rgba(0, 0, 10, 0.9);
+}
+
+/* Pulsing light burst - behind EVERYTHING */
+.fs-light-burst {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 150%;
+    height: 150%;
+    background: radial-gradient(circle,
+        rgba(0, 180, 255, 0.4) 0%,
+        rgba(0, 100, 255, 0.2) 25%,
+        rgba(100, 0, 255, 0.1) 45%,
+        transparent 65%
+    );
+    opacity: 0;
+    z-index: 2000;
+    pointer-events: none;
+}
+
+.fs-light-burst.active {
+    animation: lightBurstEntry 0.5s ease-out forwards,
+               lightBurstPulse 2s ease-in-out 0.5s infinite;
+}
+
+@keyframes lightBurstEntry {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes lightBurstPulse {
+    0%, 100% {
+        opacity: 0.8;
+        transform: translate(-50%, -50%) scale(1);
+        filter: hue-rotate(0deg);
+    }
+    50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.1);
+        filter: hue-rotate(20deg);
+    }
+}
+
+/* Layer 1: Starburst - FAST spin + screen blend */
+.fs-starburst {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 900px;
+    max-width: 140vw;
+    height: auto;
+    transform: translate(-50%, -50%) scale(0) rotate(0deg);
+    opacity: 0;
+    z-index: 2001;
+    pointer-events: none;
+    mix-blend-mode: screen;
+}
+
+.fs-starburst.active {
+    animation: starburstEntry 0.6s ease-out forwards,
+               starburstSpin 2s linear 0.6s infinite;
+}
+
+@keyframes starburstEntry {
+    0% {
+        transform: translate(-50%, -50%) scale(0) rotate(0deg);
+        opacity: 0;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1) rotate(180deg);
+        opacity: 0.5;
+    }
+}
+
+@keyframes starburstSpin {
+    from { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 0.5; }
+    to { transform: translate(-50%, -50%) scale(1) rotate(360deg); opacity: 0.5; }
+}
+
+/* Layer 2: Portal ring - slower spin + GLOW + screen blend */
+.fs-portal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 700px;
+    max-width: 110vw;
+    height: auto;
+    transform: translate(-50%, -50%) scale(0) rotate(0deg);
+    opacity: 0;
+    z-index: 2002;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    filter: drop-shadow(0 0 20px rgba(0, 180, 255, 0.8))
+            drop-shadow(0 0 40px rgba(0, 120, 255, 0.6))
+            drop-shadow(0 0 80px rgba(0, 80, 255, 0.4));
+}
+
+.fs-portal.active {
+    animation: portalEntry 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+               portalSpin 8s linear 0.8s infinite,
+               portalGlow 3s ease-in-out 0.8s infinite;
+}
+
+@keyframes portalEntry {
+    0% {
+        transform: translate(-50%, -50%) scale(0) rotate(-90deg);
+        opacity: 0;
+    }
+    60% {
+        transform: translate(-50%, -50%) scale(1.1) rotate(10deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+@keyframes portalSpin {
+    from { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+    to { transform: translate(-50%, -50%) scale(1) rotate(360deg); }
+}
+
+@keyframes portalGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 20px rgba(0, 180, 255, 0.8))
+                drop-shadow(0 0 40px rgba(0, 120, 255, 0.6))
+                drop-shadow(0 0 80px rgba(0, 80, 255, 0.4));
+    }
+    50% {
+        filter: drop-shadow(0 0 40px rgba(0, 200, 255, 1))
+                drop-shadow(0 0 80px rgba(0, 150, 255, 0.8))
+                drop-shadow(0 0 120px rgba(0, 100, 255, 0.6));
+    }
+}
+
+/* Layer 3: Energy orb - pulses + screen blend + glow */
+.fs-orb {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 500px;
+    max-width: 80vw;
+    height: auto;
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+    z-index: 2003;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    filter: drop-shadow(0 0 30px rgba(255, 100, 255, 0.6));
+}
+
+.fs-orb.active {
+    animation: orbEntry 0.5s ease-out 0.2s forwards,
+               orbPulse 2s ease-in-out 0.7s infinite;
+}
+
+@keyframes orbEntry {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.7;
+    }
+}
+
+@keyframes orbPulse {
+    0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.6;
+        filter: drop-shadow(0 0 30px rgba(255, 100, 255, 0.6));
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 0.9;
+        filter: drop-shadow(0 0 60px rgba(255, 150, 255, 0.9));
+    }
+}
+
+/* Layer 4: Horizontal beam - flash + screen blend */
+.fs-beam {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 150%;
+    max-width: 2000px;
+    height: auto;
+    transform: translate(-50%, -50%) scaleX(0);
+    opacity: 0;
+    z-index: 2004;
+    pointer-events: none;
+    mix-blend-mode: screen;
+}
+
+.fs-beam.flash {
+    animation: beamFlash 0.5s ease-out forwards;
+}
+
+@keyframes beamFlash {
+    0% {
+        transform: translate(-50%, -50%) scaleX(0) scaleY(0.5);
+        opacity: 0;
+    }
+    30% {
+        transform: translate(-50%, -50%) scaleX(1.2) scaleY(1.5);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scaleX(1) scaleY(1);
+        opacity: 0;
+    }
+}
+
+/* Layer 5: Lightning bolt - aggressive flashes + screen blend + glow */
+.fs-bolt {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 400px;
+    max-width: 60vw;
+    height: auto;
+    transform: translate(-50%, -50%) rotate(0deg);
+    opacity: 0;
+    z-index: 2005;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    filter: drop-shadow(0 0 10px rgba(100, 200, 255, 1))
+            drop-shadow(0 0 20px rgba(50, 150, 255, 0.8));
+}
+
+.fs-bolt.flash {
+    animation: boltFlash 0.15s ease-out forwards;
+}
+
+@keyframes boltFlash {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.7);
+        filter: drop-shadow(0 0 10px rgba(100, 200, 255, 1))
+                drop-shadow(0 0 20px rgba(50, 150, 255, 0.8));
+    }
+    20% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.2);
+        filter: drop-shadow(0 0 30px rgba(150, 220, 255, 1))
+                drop-shadow(0 0 60px rgba(100, 180, 255, 1));
+    }
+    40% {
+        opacity: 0.4;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    60% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+/* Layer 6: Content */
+.fs-content {
+    position: relative;
+    z-index: 2010;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: scale(0);
+    opacity: 0;
+}
+
+.fs-content.active {
+    animation: contentEntry 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s forwards;
+}
+
+@keyframes contentEntry {
+    0% {
+        transform: scale(0) translateY(50px);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Number */
+.fs-number {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(90px, 22vw, 160px);
+    font-weight: 900;
+    color: #ffaa00;
+    line-height: 0.9;
+    margin-bottom: -15px;
+    opacity: 0;
+    transform: scale(0.5);
+    text-shadow:
+        0 0 30px #ff6600,
+        0 0 60px #ff4400,
+        0 0 90px #ff2200,
+        0 0 120px rgba(255, 100, 0, 0.8);
+    -webkit-text-stroke: 1px rgba(80, 40, 0, 0.5);
+}
+
+.fs-number.show {
+    animation: numberEntry 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes numberEntry {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.fs-number.glow {
+    animation: numberEntry 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+               numberGlow 1.5s ease-in-out 0.5s infinite;
+}
+
+@keyframes numberGlow {
+    0%, 100% {
+        text-shadow:
+            0 0 30px #ff6600,
+            0 0 60px #ff4400,
+            0 0 90px #ff2200,
+            0 0 120px rgba(255, 100, 0, 0.8);
+        transform: scale(1);
+    }
+    50% {
+        text-shadow:
+            0 0 50px #ff6600,
+            0 0 100px #ff4400,
+            0 0 150px #ff2200,
+            0 0 200px rgba(255, 100, 0, 0.9);
+        transform: scale(1.08);
+    }
+}
+
+/* Slab wrapper */
+.fs-slab-wrapper {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.fs-slab {
+    width: 480px;
+    max-width: 85vw;
+    height: auto;
+    filter: drop-shadow(0 0 15px rgba(100, 180, 255, 0.4))
+            drop-shadow(0 0 30px rgba(50, 100, 200, 0.3));
+}
+
+/* Label */
+.fs-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(26px, 5.5vw, 42px);
+    font-weight: 700;
+    color: #ffdd99;
+    letter-spacing: 5px;
+    white-space: nowrap;
+    opacity: 0;
+    text-shadow:
+        0 0 15px #ff8800,
+        0 0 30px #ff6600,
+        2px 2px 4px rgba(0,0,0,0.9);
+}
+
+.fs-label.show {
+    animation: labelEntry 0.4s ease-out forwards;
+}
+
+@keyframes labelEntry {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Exit animations */
+.freespins-overlay.closing .fs-light-burst {
+    animation: lightBurstOut 0.4s ease-in forwards !important;
+}
+
+@keyframes lightBurstOut {
+    to { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+}
+
+.freespins-overlay.closing .fs-starburst,
+.freespins-overlay.closing .fs-portal {
+    animation: spinOut 0.5s ease-in forwards !important;
+}
+
+.freespins-overlay.closing .fs-orb {
+    animation: fadeOut 0.4s ease-in forwards !important;
+}
+
+.freespins-overlay.closing .fs-content {
+    animation: contentOut 0.4s ease-in forwards !important;
+}
+
+@keyframes spinOut {
+    to {
+        transform: translate(-50%, -50%) scale(0) rotate(180deg);
+        opacity: 0;
+    }
+}
+
+@keyframes fadeOut {
+    to { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+}
+
+@keyframes contentOut {
+    to { transform: scale(0) translateY(-50px); opacity: 0; }
+}
+</style>
 </head>
 <body>
-    <div class="game-container" id="game-container">
-        <img src="assets/logo.webp" alt="RealmFall" class="logo">
+<div class="game-container">
+    <img src="assets/logo.webp" alt="RealmFall" class="logo">
 
-        <div class="free-falls-indicator">
-            <span>FREE FALLS: <span id="free-falls-count">0</span></span>
-        </div>
+    <div class="ff-banner" id="ffBanner">FREE FALLS: <span id="ffCount">0</span></div>
 
-        <div class="cascade-multiplier" id="cascade-mult"></div>
-
-        <div class="reels-container">
-            <div class="reels-frame">
-                <div class="reels" id="reels"></div>
-                <!-- Multiplier positioned on top of board, 182px from bottom -->
-                <div class="multiplier-display">
-                    <div class="mult-box active" data-base="1" data-bonus="3">x1</div>
-                    <div class="mult-box" data-base="2" data-bonus="6">x2</div>
-                    <div class="mult-box" data-base="3" data-bonus="9">x3</div>
-                    <div class="mult-box" data-base="5" data-bonus="15">x5</div>
-                </div>
-            </div>
+    <div class="board-wrapper">
+        <div class="board-backdrop">
+            <img src="assets/board2bck.webp" alt="">
         </div>
-        
-        <div class="win-display" id="win-display"></div>
-        
-        <div class="controls">
-            <div class="info-box">
-                <div class="label">Balance</div>
-                <div class="value" id="balance">1000</div>
-            </div>
-            
-            <div class="bet-controls">
-                <div class="info-box">
-                    <div class="label">Bet</div>
-                    <div class="value" id="bet">1.00</div>
-                </div>
-                <div class="bet-buttons">
-                    <button class="bet-btn" onclick="changeBet(-1)">−</button>
-                    <button class="bet-btn" onclick="changeBet(1)">+</button>
-                </div>
-            </div>
-            
-            <button class="spin-btn" id="spin-btn" onclick="startSpin()">DROP</button>
-            
-            <div class="info-box">
-                <div class="label">Win</div>
-                <div class="value" id="win">0</div>
-            </div>
-            
-            <div class="info-box">
-                <div class="label">Lines</div>
-                <div class="value">20</div>
-            </div>
+        <div class="reels-clip">
+            <div class="reels" id="reels"></div>
         </div>
-        
-        <div class="bonus-overlay" id="bonus-overlay">
-            <div class="bonus-text">⚡ REALM FRACTURE ⚡</div>
-            <div class="bonus-spins"><span id="bonus-spins-count">10</span> FREE FALLS</div>
-            <div class="bonus-continue" onclick="startFreeFalls()">TAP TO CONTINUE</div>
+        <div class="board-frame">
+            <img src="assets/board.webp" alt="">
+        </div>
+        <div class="multiplier-frame">
+            <img src="assets/multi.webp" alt="">
+            <span class="multiplier-value" id="multiplierValue">x1</span>
         </div>
     </div>
 
-    <script>
-        // Game Configuration
-        const CONFIG = {
-            apiBase: '',  // Use relative URLs - nginx proxies /game/ and /slot/ to the API
-            token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzbG90b3BvbCIsImV4cCI6NDg2NzQ0NzYxNywibmJmIjoxNzA2NjQ3NjE3LCJ1aWQiOjN9.6g2Hig9ErG8IbvzkPppry5F8HJsMunZPwuQzmetGh4c',
-            gameAlias: 'NetEnt/Gonzos Quest'
-        };
+    <div class="win-display" id="winDisplay"></div>
 
-        // Symbol mapping - API may return different IDs
-        // Gonzo's Quest typically has: 7 regular symbols + wild + scatter (free fall)
-        // We'll map both 0-indexed and 1-indexed to be safe
-        const SYMBOLS = {
-            // 0-indexed (in case API uses 0-8)
-            0: 'assets/symbols/1.webp',
-            // 1-indexed (1-9)
-            1: 'assets/symbols/1.webp',
-            2: 'assets/symbols/2.webp',
-            3: 'assets/symbols/3.webp',
-            4: 'assets/symbols/4.webp',
-            5: 'assets/symbols/5.webp',
-            6: 'assets/symbols/6.webp',
-            7: 'assets/symbols/7.webp',
-            8: 'assets/symbols/8.webp',  // Possibly wild
-            9: 'assets/symbols/9.webp',  // Possibly scatter/free fall
-            // Extended range (in case API uses 10+)
-            10: 'assets/symbols/9.webp',
-            11: 'assets/symbols/8.webp',
-            12: 'assets/symbols/7.webp'
-        };
+    <div id="loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#ffd700;font-size:2rem;text-shadow:0 0 20px #ff6600;z-index:200;">Loading...</div>
 
-        // Bet amounts (total bet = bet * 20 lines)
-        const BETS = [0.20, 0.40, 0.60, 0.80, 1.00, 2.00, 5.00, 10.00];
-        const DEFAULT_BET_INDEX = 4; // 1.00
+    <div class="controls">
+        <div class="stat">
+            <div class="stat-label">Balance</div>
+            <div class="stat-value" id="balance">1000.00</div>
+        </div>
 
-        // Game State
-        let STATE = {
-            gid: null,
-            balance: 1000,
-            betIndex: DEFAULT_BET_INDEX,
-            bet: BETS[DEFAULT_BET_INDEX],
-            win: 0,
-            screen: null,
-            spinning: false,
-            freeFalls: 0,
-            inFreeFalls: false,
-            cascadeLevel: 0,
-            pendingFreeFalls: 0
-        };
+        <div class="bet-area">
+            <div class="stat">
+                <div class="stat-label">Bet</div>
+                <div class="stat-value" id="bet">1.00</div>
+            </div>
+            <div class="bet-btns">
+                <button class="bet-btn" onclick="changeBet(-1)">-</button>
+                <button class="bet-btn" onclick="changeBet(1)">+</button>
+            </div>
+        </div>
 
-        // Multiplier values
-        const BASE_MULTIPLIERS = [1, 2, 3, 5];
-        const BONUS_MULTIPLIERS = [3, 6, 9, 15];
+        <button class="spin-btn" id="spinBtn" onclick="spin()">SPIN</button>
 
-        // Initialize
-        async function init() {
-            createGrid();
-            await createGame();
+        <div class="stat">
+            <div class="stat-label">Win</div>
+            <div class="stat-value" id="win">0.00</div>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = '';
+const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzbG90b3BvbCIsImV4cCI6NDg2NzQ0NzYxNywibmJmIjoxNzA2NjQ3NjE3LCJ1aWQiOjN9.6g2Hig9ErG8IbvzkPppry5F8HJsMunZPwuQzmetGh4c';
+const GAME_ALIAS = 'NetEnt/Gonzos Quest';
+const BETS = [0.20, 0.40, 0.60, 0.80, 1.00, 2.00, 5.00, 10.00];
+
+// Symbol URLs for background-image
+const SYMBOLS = {};
+for (let i = 1; i <= 9; i++) {
+    SYMBOLS[i] = `assets/symbols/${i}.webp`;
+}
+
+let gid = null;
+let balance = 1000;
+let betIdx = 4;
+let spinning = false;
+let freeFalls = 0;
+let totalWin = 0;
+let bonusTotalWin = 0;  // Track total win during entire bonus round
+let screen = null;
+let previousHit = null;
+let previousScreen = null;  // Track previous screen state for cascade animation
+
+// Preload all symbol images into browser cache
+async function preloadSymbols() {
+    console.log('Preloading symbols...');
+    const promises = Object.entries(SYMBOLS).map(([id, src]) => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                console.log(`Loaded symbol ${id}`);
+                resolve();
+            };
+            img.onerror = () => {
+                console.warn(`Failed to load symbol ${id}`);
+                resolve();
+            };
+            img.src = src;
+        });
+    });
+    await Promise.all(promises);
+    console.log('All symbols preloaded!');
+}
+
+// DOM helpers
+const $ = id => document.getElementById(id);
+const reelsEl = $('reels');
+
+// Track all symbols currently on screen (absolute positioned divs)
+let symbolElements = [];
+
+// Create a single symbol element
+function createSymbol(col, row, symbolId) {
+    const div = document.createElement('div');
+    div.className = 'symbol';
+
+    // Validate symbolId
+    if (symbolId === undefined || symbolId === null || !SYMBOLS[symbolId]) {
+        console.error(`Invalid symbolId: ${symbolId} at col:${col} row:${row}`);
+        symbolId = 1; // Fallback to first symbol
+    }
+
+    div.style.backgroundImage = `url('${SYMBOLS[symbolId]}')`;
+    div.style.left = `${col * 20}%`;  // 20% per column
+    div.style.top = `${row * 33.33}%`;  // 33.33% per row
+    div.dataset.col = col;
+    div.dataset.row = row;
+    div.dataset.symbolId = symbolId;
+    return div;
+}
+
+// Initialize reels (empty, symbols created on first spin)
+function createGrid() {
+    reelsEl.innerHTML = '';
+    symbolElements = [];
+}
+
+// Scatter anticipation - symbol ID 2 is scatter (freefall trigger)
+const SCATTER_SYMBOL_ID = 2;
+
+function checkAnticipation(screen) {
+    // Count scatters in first 3 columns
+    let scatterCols = [];
+
+    for (let col = 0; col < 5; col++) {
+        for (let row = 0; row < 3; row++) {
+            if (screen[col][row] === SCATTER_SYMBOL_ID) {
+                scatterCols.push(col);
+                break; // Only count one per column
+            }
         }
+    }
 
-        function createGrid() {
-            const reels = document.getElementById('reels');
-            reels.innerHTML = '';
+    // If 2+ scatters in first 3 reels, trigger anticipation
+    const earlyScatters = scatterCols.filter(col => col < 3).length;
+    return earlyScatters >= 2 ? scatterCols : null;
+}
+
+async function triggerAnticipation(scatterCols, remainingCols) {
+    const wrapper = document.querySelector('.board-wrapper');
+
+    // Add anticipation class to wrapper
+    wrapper.classList.add('anticipation-active');
+
+    // Highlight landed scatters
+    scatterCols.forEach(col => {
+        symbolElements.filter(s => parseInt(s.dataset.col) === col)
+            .forEach(s => s.classList.add('scatter-hit'));
+    });
+
+    // Mark remaining columns as targets
+    remainingCols.forEach(col => {
+        symbolElements.filter(s => parseInt(s.dataset.col) === col)
+            .forEach(s => s.classList.add('anticipation-target'));
+    });
+
+    // Add screen shake
+    wrapper.classList.add('screen-shake');
+
+    // Hold for dramatic effect
+    await new Promise(r => setTimeout(r, 1500));
+
+    // Clean up
+    wrapper.classList.remove('anticipation-active', 'screen-shake');
+    symbolElements.forEach(sym => {
+        sym.classList.remove('scatter-hit', 'anticipation-target');
+    });
+}
+
+// Render screen - absolute positioned symbols for true movement
+async function renderScreen(screen, cfn, hitArray, animate = true) {
+    const reels = document.getElementById('reels');
+
+    // ===== NO ANIMATION - just set everything =====
+    if (!animate) {
+        reels.innerHTML = '';
+        symbolElements = [];
+
+        for (let col = 0; col < 5; col++) {
             for (let row = 0; row < 3; row++) {
-                for (let col = 0; col < 5; col++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'cell';
-                    cell.dataset.row = row;
-                    cell.dataset.col = col;
-                    cell.innerHTML = '<img src="assets/symbols/1.webp" alt="">';
-                    reels.appendChild(cell);
-                }
+                const sym = createSymbol(col, row, screen[col][row]);
+                reels.appendChild(sym);
+                symbolElements.push(sym);
+            }
+        }
+        previousHit = hitArray;
+        return;
+    }
+
+    // ===== INITIAL SPIN (CFN=1) - clear and create all new symbols =====
+    if (cfn === 1) {
+        reels.innerHTML = '';
+        symbolElements = [];
+
+        for (let col = 0; col < 5; col++) {
+            for (let row = 0; row < 3; row++) {
+                const sym = createSymbol(col, row, screen[col][row]);
+                sym.style.top = '-40%';  // Start above screen
+                sym.style.opacity = '0';
+                reels.appendChild(sym);
+                symbolElements.push(sym);
             }
         }
 
-        async function api(endpoint, data = null) {
-            try {
-                const options = {
-                    method: data ? 'POST' : 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${CONFIG.token}`
-                    }
-                };
-                if (data) options.body = JSON.stringify(data);
-                const res = await fetch(`${CONFIG.apiBase}${endpoint}`, options);
-                return await res.json();
-            } catch (err) {
-                console.error('API Error:', err);
-                return null;
-            }
-        }
+        await new Promise(r => setTimeout(r, 50));
 
-        async function createGame() {
-            const res = await api('/game/new', {
-                cid: 1,
-                uid: 3,
-                alias: CONFIG.gameAlias
+        // Animate each column falling
+        for (let col = 0; col < 5; col++) {
+            const colSymbols = symbolElements.filter(s => parseInt(s.dataset.col) === col);
+
+            colSymbols.forEach((sym, i) => {
+                setTimeout(() => {
+                    sym.style.top = `${i * 33.33}%`;
+                    sym.style.opacity = '1';
+                }, i * 50);
             });
-            console.log('=== CREATE GAME DEBUG ===');
-            console.log('Full response:', JSON.stringify(res, null, 2));
-            if (res && res.gid) {
-                STATE.gid = res.gid;
-                STATE.balance = res.wallet || 1000;
-                // API returns screen in game.scr, not screen directly
-                if (res.game && res.game.scr) {
-                    STATE.screen = res.game.scr;
-                    console.log('Initial screen symbols:');
-                    res.game.scr.forEach((col, i) => console.log(`  Col ${i}:`, col));
-                    const allIds = new Set();
-                    res.game.scr.forEach(col => col.forEach(id => allIds.add(id)));
-                    console.log('Unique symbol IDs:', [...allIds].sort((a,b) => a-b));
-                    console.log('createGame: calling renderScreen with animate=false');
-                    renderScreen(res.game.scr, false);
+
+            await new Promise(r => setTimeout(r, 80));
+
+            // Scatter anticipation after column 2
+            if (col === 2) {
+                const scatterCols = checkAnticipation(screen);
+                if (scatterCols && scatterCols.length >= 2) {
+                    await new Promise(r => setTimeout(r, 250));
+                    const remainingCols = [3, 4].filter(c => !scatterCols.includes(c));
+                    await triggerAnticipation(scatterCols, remainingCols);
                 }
-                updateDisplay();
-                console.log('Game created:', STATE.gid, 'Balance:', STATE.balance);
+            }
+        }
+
+        await new Promise(r => setTimeout(r, 300));
+        previousHit = hitArray;
+        return;
+    }
+
+    // ===== CASCADE (CFN > 1) - Symbols actually move =====
+    if (!previousHit) {
+        previousHit = hitArray;
+        return;
+    }
+
+    // DEBUG: Log current state
+    console.log('CASCADE: previousHit:', JSON.stringify(previousHit));
+    console.log('Current symbols count:', symbolElements.length);
+
+    // REBUILD POSITION MAP - figure out which symbol is at which grid position
+    // by parsing their dataset.col and dataset.row
+    const symbolGrid = Array(5).fill(null).map(() => Array(3).fill(null));
+
+    symbolElements.forEach(sym => {
+        const col = parseInt(sym.dataset.col);
+        const row = parseInt(sym.dataset.row);
+        if (col >= 0 && col < 5 && row >= 0 && row < 3) {
+            symbolGrid[col][row] = sym;
+        }
+    });
+
+    // STEP 1: Find and remove winning symbols using the rebuilt grid
+    const toRemove = [];
+    for (let col = 0; col < 5; col++) {
+        if (!previousHit[col]) continue;
+        for (let row = 0; row < 3; row++) {
+            if (previousHit[col][row] > 0) {
+                console.log(`Hit at col:${col} row:${row}, value:${previousHit[col][row]}`);
+                const sym = symbolGrid[col][row];
+                if (sym) {
+                    console.log(`  Found symbol, removing`);
+                    sym.style.transition = 'opacity 0.25s, transform 0.25s';
+                    sym.style.opacity = '0';
+                    sym.style.transform = 'scale(0.5)';
+                    toRemove.push(sym);
+                } else {
+                    console.warn(`  NO SYMBOL at col:${col} row:${row}!`);
+                }
+            }
+        }
+    }
+
+    await new Promise(r => setTimeout(r, 300));
+
+    // Remove from DOM and array
+    toRemove.forEach(sym => {
+        sym.remove();
+        symbolElements = symbolElements.filter(s => s !== sym);
+    });
+
+    // STEP 2: Move survivors DOWN - recalculate positions per column
+    for (let col = 0; col < 5; col++) {
+        if (!previousHit[col]) continue;
+
+        // COUNT cells with hits, not SUM hit values
+        const hitsInColumn = previousHit[col].filter(h => h > 0).length;
+        if (hitsInColumn === 0) continue;
+
+        // Get remaining symbols in this column
+        const colSymbols = symbolElements
+            .filter(s => parseInt(s.dataset.col) === col)
+            .sort((a, b) => parseInt(a.dataset.row) - parseInt(b.dataset.row));
+
+        console.log(`Col ${col}: ${hitsInColumn} hits, ${colSymbols.length} survivors`);
+
+        // Survivors fill from bottom: if 2 survivors, rows 1,2. If 1 survivor, row 2.
+        const startRow = 3 - colSymbols.length;
+
+        colSymbols.forEach((sym, i) => {
+            const newRow = startRow + i;
+            if (newRow < 0 || newRow > 2) {
+                console.error(`Invalid row ${newRow} for survivor!`);
+                return;
+            }
+            console.log(`  Survivor ${i} moving to row ${newRow}`);
+            sym.dataset.row = newRow;  // Update dataset for next cascade
+            sym.style.transition = 'top 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)';
+            sym.style.top = `${newRow * 33.33}%`;
+        });
+
+        await new Promise(r => setTimeout(r, 80));
+    }
+
+    await new Promise(r => setTimeout(r, 300));
+
+    // STEP 3: Create NEW symbols at top and drop them
+    for (let col = 0; col < 5; col++) {
+        if (!previousHit[col]) continue;
+
+        // COUNT cells with hits, not SUM hit values
+        const hitsInColumn = previousHit[col].filter(h => h > 0).length;
+        if (hitsInColumn === 0) continue;
+
+        console.log(`Col ${col}: Creating ${hitsInColumn} new symbols`);
+
+        // New symbols go in rows 0 to (hitsInColumn - 1)
+        for (let row = 0; row < hitsInColumn; row++) {
+            const symbolId = screen[col][row];
+            console.log(`  New symbol at row ${row}: symbolId ${symbolId}`);
+
+            const sym = createSymbol(col, row, symbolId);
+            sym.style.top = '-40%';  // Start ABOVE the grid
+            sym.style.opacity = '0';
+            reels.appendChild(sym);
+            symbolElements.push(sym);
+
+            // Animate down with stagger
+            setTimeout(() => {
+                sym.style.transition = 'top 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease-out';
+                sym.style.top = `${row * 33.33}%`;
+                sym.style.opacity = '1';
+            }, 50 + row * 70);
+        }
+
+        await new Promise(r => setTimeout(r, 100));
+    }
+
+    await new Promise(r => setTimeout(r, 300));
+    previousHit = hitArray;
+}
+
+// Show wins with glow effect
+async function showWins(wins) {
+    if (!wins || wins.length === 0) return;
+
+    const winningSymbols = [];
+
+    wins.forEach(win => {
+        if (win.xy) {
+            win.xy.forEach(([col, row]) => {
+                if (col > 0 && row > 0) {
+                    // Find symbol at this position (1-indexed from API)
+                    const sym = symbolElements.find(s =>
+                        parseInt(s.dataset.col) === col - 1 &&
+                        parseInt(s.dataset.row) === row - 1
+                    );
+                    if (sym) winningSymbols.push(sym);
+                }
+            });
+        }
+    });
+
+    winningSymbols.forEach(sym => sym.classList.add('winning'));
+
+    await new Promise(r => setTimeout(r, 800));
+
+    winningSymbols.forEach(sym => sym.classList.remove('winning'));
+}
+
+// Clear winning highlights
+function clearWins() {
+    symbolElements.forEach(sym => sym.classList.remove('winning'));
+}
+
+// Update multiplier display based on cascade fall number
+function updateMultiplier(cfn, inBonus = false) {
+    const el = $('multiplierValue');
+    if (!el) return;
+
+    // Base multipliers: 1x, 2x, 3x, 5x for cascades 1, 2, 3, 4+
+    // Bonus multipliers: 3x, 6x, 9x, 15x
+    const baseMults = {1: 1, 2: 2, 3: 3};
+    const bonusMults = {1: 3, 2: 6, 3: 9};
+
+    let mult;
+    if (inBonus) {
+        mult = cfn >= 4 ? 15 : (bonusMults[cfn] || 3);
+    } else {
+        mult = cfn >= 4 ? 5 : (baseMults[cfn] || 1);
+    }
+
+    el.textContent = `x${mult}`;
+
+    // Add glow effect on increase
+    if (cfn > 1) {
+        el.classList.add('multiplier-glow');
+        setTimeout(() => el.classList.remove('multiplier-glow'), 500);
+    }
+}
+
+// Update UI
+function updateUI() {
+    $('balance').textContent = balance.toFixed(2);
+    $('bet').textContent = BETS[betIdx].toFixed(2);
+    $('win').textContent = totalWin.toFixed(2);
+
+    if (freeFalls > 0) {
+        $('ffBanner').classList.add('show');
+        $('ffCount').textContent = freeFalls;
+    } else {
+        $('ffBanner').classList.remove('show');
+    }
+}
+
+// Show win popup
+function showWin(amount) {
+    const el = $('winDisplay');
+    el.textContent = '+' + amount.toFixed(2);
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 1500);
+}
+
+// ===== BIG WIN SYSTEM =====
+
+// Win tier thresholds (multiplier of bet)
+const WIN_TIERS = {
+    BIG: 15,    // 15x bet
+    MEGA: 30,   // 30x bet
+    EPIC: 50    // 50x bet
+};
+
+function getWinTier(winAmount, betAmount) {
+    const multiplier = winAmount / betAmount;
+    if (multiplier >= WIN_TIERS.EPIC) return { name: 'EPIC WIN', class: 'epic' };
+    if (multiplier >= WIN_TIERS.MEGA) return { name: 'MEGA WIN', class: 'mega' };
+    if (multiplier >= WIN_TIERS.BIG) return { name: 'BIG WIN', class: 'big' };
+    return null; // No big win display
+}
+
+async function countUp(element, start, end, duration = 1500) {
+    const startTime = performance.now();
+    const range = end - start;
+
+    return new Promise(resolve => {
+        function update(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+
+            // Ease out cubic
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            const current = start + (range * easeProgress);
+
+            element.textContent = current.toFixed(2);
+
+            if (progress < 1) {
+                requestAnimationFrame(update);
             } else {
-                console.error('Failed to create game:', res);
-            }
-            console.log('=========================');
-        }
-
-        // Get cell dimensions dynamically for animation calculations
-        function getCellSize() {
-            const cell = document.querySelector('.cell');
-            if (cell) {
-                return cell.offsetHeight;
-            }
-            return 152; // fallback
-        }
-
-        // Track pending animation timeouts so we can cancel them
-        let pendingAnimations = [];
-
-        // DEBUG: Set to true to disable animation and test if flickering stops
-        // If flickering stops with this true, the bug is in animation timing
-        // If flickering continues, something else is changing symbols
-        const DEBUG_NO_ANIMATION = true;  // TEMP: testing without animation
-
-        // Render screen with drop animation (all symbols fall from above the grid)
-        // Called ONCE per spin - do NOT call multiple times
-        function renderScreen(screen, animate = true) {
-            console.log('=== renderScreen START ===');
-            console.log('animate=' + animate + ', DEBUG_NO_ANIMATION=' + DEBUG_NO_ANIMATION);
-
-            // Cancel any pending animations from previous render
-            pendingAnimations.forEach(id => clearTimeout(id));
-            pendingAnimations = [];
-
-            const cells = document.querySelectorAll('.cell');
-            const cellHeight = getCellSize();
-
-            // Log what symbols we're setting
-            console.log('Setting symbols:');
-            for (let col = 0; col < 5; col++) {
-                console.log(`  Col ${col}: [${screen[col].join(', ')}]`);
-            }
-
-            cells.forEach((cell, index) => {
-                const row = Math.floor(index / 5);
-                const col = index % 5;
-                const symbolId = screen[col][row];
-                const img = cell.querySelector('img');
-
-                // Clear any existing classes and styles immediately
-                cell.classList.remove('winning', 'shattering');
-                img.style.transition = 'none';
-                img.style.transform = '';
-
-                // Set symbol image
-                const mappedSrc = SYMBOLS[symbolId];
-                if (!mappedSrc) {
-                    console.warn(`UNMAPPED: cell ${index} (col=${col}, row=${row}) symbolId=${symbolId}`);
-                }
-
-                // Log each cell assignment
-                if (index === 0) {
-                    console.log(`Cell ${index}: col=${col}, row=${row}, symbolId=${symbolId}, src=${mappedSrc}`);
-                }
-
-                img.src = mappedSrc || SYMBOLS[1];
-
-                // DEBUG MODE: No animation
-                if (DEBUG_NO_ANIMATION || !animate) {
-                    img.style.transform = '';
-                    return;
-                }
-
-                // Animation: start above grid and fall down
-                const startAboveAmount = 50;
-                const fallDistance = startAboveAmount + (row * cellHeight);
-
-                // IMPORTANT: Hide image, position it, then show and animate
-                img.style.opacity = '0';
-                img.style.transform = `translateY(-${fallDistance}px)`;
-
-                // Force reflow
-                void img.offsetHeight;
-
-                // Stagger by column
-                const delay = col * 80;
-                const duration = 400 + row * 60;
-
-                // Make visible and start animation
-                const t1 = setTimeout(() => {
-                    img.style.opacity = '1';
-                    img.style.transition = `transform ${duration}ms cubic-bezier(0.33, 1, 0.68, 1)`;
-                    img.style.transform = 'translateY(0)';
-
-                    // Bounce on landing
-                    const t2 = setTimeout(() => {
-                        img.style.transition = 'transform 80ms ease-out';
-                        img.style.transform = 'translateY(-6px)';
-                        const t3 = setTimeout(() => {
-                            img.style.transition = 'transform 60ms ease-in';
-                            img.style.transform = 'translateY(0)';
-                            const t4 = setTimeout(() => {
-                                img.style.transition = '';
-                                img.style.transform = '';
-                            }, 60);
-                            pendingAnimations.push(t4);
-                        }, 80);
-                        pendingAnimations.push(t3);
-                    }, duration);
-                    pendingAnimations.push(t2);
-                }, delay);
-                pendingAnimations.push(t1);
-            });
-
-            console.log('=== renderScreen END ===');
-        }
-
-        function updateDisplay() {
-            // Format balance and bet to 2 decimal places for display
-            document.getElementById('balance').textContent = STATE.balance.toFixed(2);
-            document.getElementById('bet').textContent = STATE.bet.toFixed(2);
-            document.getElementById('win').textContent = STATE.win.toFixed(2);
-
-            // Update free falls indicator
-            const ffIndicator = document.querySelector('.free-falls-indicator');
-            if (STATE.freeFalls > 0 || STATE.inFreeFalls) {
-                ffIndicator.classList.add('active');
-                document.getElementById('free-falls-count').textContent = STATE.freeFalls;
-            } else {
-                ffIndicator.classList.remove('active');
-            }
-
-            // Update background for bonus mode
-            const gameContainer = document.getElementById('game-container');
-            if (STATE.inFreeFalls) {
-                gameContainer.classList.add('bonus-mode');
-            } else {
-                gameContainer.classList.remove('bonus-mode');
+                element.textContent = end.toFixed(2);
+                resolve();
             }
         }
+        requestAnimationFrame(update);
+    });
+}
 
-        function updateMultiplierDisplay(level) {
-            const boxes = document.querySelectorAll('.mult-box');
-            const multipliers = STATE.inFreeFalls ? BONUS_MULTIPLIERS : BASE_MULTIPLIERS;
+async function showBigWin(winAmount, betAmount) {
+    const tier = getWinTier(winAmount, betAmount);
+    if (!tier) return false; // Not a big enough win
 
-            boxes.forEach((box, i) => {
-                box.classList.remove('active');
-                box.textContent = 'x' + multipliers[i];
-                if (i === level) {
-                    box.classList.add('active');
-                }
-            });
+    const overlay = document.getElementById('bigwinOverlay');
+    const tierEl = document.getElementById('bigwinTier');
+    const amountEl = document.getElementById('bigwinAmount');
 
-            // Show cascade multiplier text
-            const cascadeMult = document.getElementById('cascade-mult');
-            if (level > 0) {
-                cascadeMult.textContent = `CASCADE x${multipliers[level]}!`;
-                cascadeMult.classList.add('show');
-            } else {
-                cascadeMult.classList.remove('show');
+    // Setup
+    tierEl.textContent = tier.name;
+    tierEl.className = 'bigwin-tier ' + tier.class;
+    amountEl.textContent = '0.00';
+
+    // Show overlay
+    overlay.classList.add('active');
+
+    // Wait for effects to start, then count up
+    await new Promise(r => setTimeout(r, 400));
+    await countUp(amountEl, 0, winAmount, 1500);
+
+    // Hold for a moment
+    await new Promise(r => setTimeout(r, 1000));
+
+    // Close
+    overlay.classList.add('closing');
+    await new Promise(r => setTimeout(r, 400));
+    overlay.classList.remove('active', 'closing');
+
+    return true;
+}
+
+// Lightning flash interval holder
+let boltInterval = null;
+
+async function showNewFreeSpinsPortal(spinsAwarded) {
+    const overlay = document.getElementById('freespinsOverlay');
+    const lightBurst = document.getElementById('fsLightBurst');
+    const starburst = document.getElementById('fsStarburst');
+    const portal = document.getElementById('fsPortal');
+    const orb = document.getElementById('fsOrb');
+    const beam = document.getElementById('fsBeam');
+    const bolt = document.getElementById('fsBolt');
+    const content = document.getElementById('fsContent');
+    const number = document.getElementById('fsNumber');
+    const label = document.getElementById('fsLabel');
+
+    // Reset all states
+    lightBurst.classList.remove('active');
+    starburst.classList.remove('active');
+    portal.classList.remove('active');
+    orb.classList.remove('active');
+    beam.classList.remove('flash');
+    bolt.classList.remove('flash');
+    content.classList.remove('active');
+    number.classList.remove('show', 'glow');
+    label.classList.remove('show');
+    bolt.style.transform = 'translate(-50%, -50%) rotate(0deg)';
+
+    // Clear any existing bolt interval
+    if (boltInterval) {
+        clearInterval(boltInterval);
+        boltInterval = null;
+    }
+
+    // Set content
+    number.textContent = spinsAwarded;
+    label.textContent = 'FREE SPINS';
+
+    // Step 1: Show overlay, activate spinning layers
+    overlay.classList.add('active');
+    lightBurst.classList.add('active');
+    starburst.classList.add('active');
+    portal.classList.add('active');
+    orb.classList.add('active');
+
+    // Step 2: Flash beam on impact
+    setTimeout(() => {
+        beam.classList.add('flash');
+    }, 400);
+
+    // Step 3: Show content
+    setTimeout(() => {
+        content.classList.add('active');
+    }, 450);
+
+    // Step 4: Show number with glow
+    setTimeout(() => {
+        number.classList.add('glow');
+    }, 600);
+
+    // Step 5: Show label
+    setTimeout(() => {
+        label.classList.add('show');
+    }, 750);
+
+    // Step 6: Start aggressive lightning flashes with double-flash chance
+    setTimeout(() => {
+        boltInterval = setInterval(() => {
+            const doDoubleFlash = Math.random() > 0.5;
+
+            bolt.classList.remove('flash');
+            bolt.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 360}deg) scaleX(${Math.random() > 0.5 ? 1 : -1})`;
+            void bolt.offsetWidth;
+            bolt.classList.add('flash');
+
+            if (doDoubleFlash) {
+                setTimeout(() => {
+                    bolt.classList.remove('flash');
+                    bolt.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 360}deg) scaleX(${Math.random() > 0.5 ? 1 : -1})`;
+                    void bolt.offsetWidth;
+                    bolt.classList.add('flash');
+                }, 150);
             }
+        }, 600 + Math.random() * 300);
+    }, 900);
+
+    // Hold display
+    await new Promise(r => setTimeout(r, 3500));
+
+    // Clear bolt interval before closing
+    if (boltInterval) {
+        clearInterval(boltInterval);
+        boltInterval = null;
+    }
+
+    // Close
+    overlay.classList.add('closing');
+    await new Promise(r => setTimeout(r, 600));
+
+    // Reset all
+    overlay.classList.remove('active', 'closing');
+    lightBurst.classList.remove('active');
+    starburst.classList.remove('active');
+    portal.classList.remove('active');
+    orb.classList.remove('active');
+    beam.classList.remove('flash');
+    bolt.classList.remove('flash');
+    content.classList.remove('active');
+    number.classList.remove('show', 'glow');
+    label.classList.remove('show');
+}
+
+async function showNewFreeSpinsEnd(totalWinAmount) {
+    const overlay = document.getElementById('freespinsOverlay');
+    const lightBurst = document.getElementById('fsLightBurst');
+    const starburst = document.getElementById('fsStarburst');
+    const portal = document.getElementById('fsPortal');
+    const orb = document.getElementById('fsOrb');
+    const beam = document.getElementById('fsBeam');
+    const bolt = document.getElementById('fsBolt');
+    const content = document.getElementById('fsContent');
+    const number = document.getElementById('fsNumber');
+    const label = document.getElementById('fsLabel');
+
+    // Reset all states
+    lightBurst.classList.remove('active');
+    starburst.classList.remove('active');
+    portal.classList.remove('active');
+    orb.classList.remove('active');
+    beam.classList.remove('flash');
+    bolt.classList.remove('flash');
+    content.classList.remove('active');
+    number.classList.remove('show', 'glow');
+    label.classList.remove('show');
+    bolt.style.transform = 'translate(-50%, -50%) rotate(0deg)';
+
+    // Clear any existing bolt interval
+    if (boltInterval) {
+        clearInterval(boltInterval);
+        boltInterval = null;
+    }
+
+    // Set content for end screen
+    number.textContent = '0.00';
+    label.textContent = 'TOTAL WIN';
+
+    // Step 1: Show overlay, activate spinning layers
+    overlay.classList.add('active');
+    lightBurst.classList.add('active');
+    starburst.classList.add('active');
+    portal.classList.add('active');
+    orb.classList.add('active');
+
+    // Step 2: Flash beam
+    setTimeout(() => {
+        beam.classList.add('flash');
+    }, 400);
+
+    // Step 3: Show content
+    setTimeout(() => {
+        content.classList.add('active');
+    }, 450);
+
+    // Step 4: Show number (will count up)
+    setTimeout(() => {
+        number.classList.add('show');
+    }, 600);
+
+    // Step 5: Show label
+    setTimeout(() => {
+        label.classList.add('show');
+    }, 750);
+
+    // Step 6: Start aggressive lightning flashes with double-flash chance
+    setTimeout(() => {
+        boltInterval = setInterval(() => {
+            const doDoubleFlash = Math.random() > 0.5;
+
+            bolt.classList.remove('flash');
+            bolt.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 360}deg) scaleX(${Math.random() > 0.5 ? 1 : -1})`;
+            void bolt.offsetWidth;
+            bolt.classList.add('flash');
+
+            if (doDoubleFlash) {
+                setTimeout(() => {
+                    bolt.classList.remove('flash');
+                    bolt.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 360}deg) scaleX(${Math.random() > 0.5 ? 1 : -1})`;
+                    void bolt.offsetWidth;
+                    bolt.classList.add('flash');
+                }, 150);
+            }
+        }, 600 + Math.random() * 300);
+    }, 900);
+
+    // Count up after number appears
+    setTimeout(async () => {
+        await countUp(number, 0, totalWinAmount, 1500);
+        number.classList.add('glow');
+    }, 900);
+
+    // Hold display
+    await new Promise(r => setTimeout(r, 4500));
+
+    // Clear bolt interval before closing
+    if (boltInterval) {
+        clearInterval(boltInterval);
+        boltInterval = null;
+    }
+
+    // Close
+    overlay.classList.add('closing');
+    await new Promise(r => setTimeout(r, 600));
+
+    // Reset all
+    overlay.classList.remove('active', 'closing');
+    lightBurst.classList.remove('active');
+    starburst.classList.remove('active');
+    portal.classList.remove('active');
+    orb.classList.remove('active');
+    beam.classList.remove('flash');
+    bolt.classList.remove('flash');
+    content.classList.remove('active');
+    number.classList.remove('show', 'glow');
+    label.classList.remove('show');
+}
+
+// TEST FUNCTIONS - correct bet values
+window.testBigWin = () => showBigWin(20, 1);      // 20x = Big Win
+window.testMegaWin = () => showBigWin(40, 1);    // 40x = Mega Win
+window.testEpicWin = () => showBigWin(60, 1);    // 60x = Epic Win
+window.testFreeSpinsStart = (spins = 10) => showNewFreeSpinsPortal(spins);
+window.testFreeSpinsEnd = (win = 250) => showNewFreeSpinsEnd(win);
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+    if (e.shiftKey && e.key === 'B') testBigWin();
+    if (e.shiftKey && e.key === 'M') testMegaWin();
+    if (e.shiftKey && e.key === 'E') testEpicWin();
+    if (e.shiftKey && e.key === 'F') testFreeSpinsStart(10);
+    if (e.shiftKey && e.key === 'W') testFreeSpinsEnd(500);
+});
+
+console.log('Win display test shortcuts:');
+console.log('  Shift+B = Big Win test');
+console.log('  Shift+M = Mega Win test');
+console.log('  Shift+E = Epic Win test');
+console.log('  Shift+F = Free Spins start test');
+console.log('  Shift+W = Free Spins end (Win) test');
+
+// API call with full logging
+async function api(endpoint, data) {
+    const res = await fetch(API + endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + TOKEN
+        },
+        body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    console.log('FULL API RESPONSE for', endpoint, ':', JSON.stringify(json, null, 2));
+    return json;
+}
+
+// Get current game state (screen) from API
+async function getGameInfo() {
+    const res = await api('/game/info', { gid: gid });
+    return res;
+}
+
+// Initialize game
+async function init() {
+    await preloadSymbols();
+    $('loading').style.display = 'none';
+    createGrid();
+
+    const res = await api('/game/new', {
+        cid: 1,
+        uid: 3,
+        alias: GAME_ALIAS
+    });
+
+    if (res && res.gid) {
+        gid = res.gid;
+        balance = res.wallet || 1000;
+        if (res.game && res.game.scr) {
+            screen = res.game.scr;
+            console.log('*** INIT: Calling renderScreen for initial display (no animation) ***');
+            await renderScreen(screen, 1, null, false);  // Initial display, no animation
+        }
+    }
+
+    updateUI();
+}
+
+// Change bet
+function changeBet(dir) {
+    if (spinning) return;
+    betIdx = Math.max(0, Math.min(BETS.length - 1, betIdx + dir));
+    updateUI();
+}
+
+// Main spin function
+async function spin() {
+    if (spinning) return;
+
+    const bet = BETS[betIdx];
+    if (freeFalls <= 0 && balance < bet) {
+        alert('Insufficient balance!');
+        return;
+    }
+
+    spinning = true;
+    $('spinBtn').disabled = true;
+    totalWin = 0;
+    previousHit = null;  // Reset for new spin
+    updateMultiplier(1, freeFalls > 0);
+    clearWins();
+    updateUI();
+
+    // Cascade loop - keep spinning while there are wins
+    let cascadeNum = 0;
+    let inBonus = freeFalls > 0;
+    let loopCount = 0;
+
+    while (true) {
+        loopCount++;
+        console.log(`\n========== CASCADE LOOP ${loopCount} ==========`);
+
+        // Call spin API
+        const res = await api('/slot/spin', {
+            gid: gid,
+            bet: bet / 20  // bet per line
+        });
+
+        if (!res || res.code || res.what) {
+            console.log('API Error:', res?.what || 'Unknown error');
+            if (res && res.what) alert(res.what);
+            break;
         }
 
-        function changeBet(direction) {
-            if (STATE.spinning || STATE.freeFalls > 0) return;
-            // Cycle through BETS array
-            STATE.betIndex = Math.max(0, Math.min(BETS.length - 1, STATE.betIndex + direction));
-            STATE.bet = BETS[STATE.betIndex];
-            updateDisplay();
+        // Update from response
+        if (res.wallet !== undefined) balance = res.wallet;
+        if (res.game?.fsr !== undefined) freeFalls = res.game.fsr;
+
+        // Get screen data - check multiple possible locations
+        let scr = res.game?.scr || res.scr || null;
+        const cfn = res.game?.cfn || 1;
+        const hit = res.game?.hit || null;
+        const wins = res.wins || [];
+        const gain = res.game?.gain || 0;
+
+        // If no screen in spin response, fetch from /game/info
+        if (!scr) {
+            console.log('No screen in spin response, fetching from /game/info...');
+            const infoRes = await api('/game/info', { gid: gid });
+            scr = infoRes.game?.scr || infoRes.scr;
+            console.log('Got screen from /game/info:', scr ? 'YES' : 'NO');
         }
 
-        async function startSpin() {
-            console.log('startSpin called, spinning=' + STATE.spinning + ', gid=' + STATE.gid);
-            if (STATE.spinning) {
-                console.log('Already spinning, ignoring');
-                return;
-            }
-            if (!STATE.gid) {
-                console.log('No game ID, creating game first');
-                await createGame();
-                if (!STATE.gid) return;
-            }
+        console.log('CFN:', cfn, '| Wins:', wins.length, '| Screen:', scr ? 'YES' : 'NO');
 
-            // Check balance (skip if free falls)
-            if (STATE.freeFalls <= 0 && STATE.balance < STATE.bet) {
-                alert('Insufficient balance!');
-                return;
-            }
+        // Render screen with fall animation
+        if (scr) {
+            screen = scr;
+            console.log(`\n*** SPIN LOOP ${loopCount}: About to call renderScreen with CFN=${cfn} ***`);
+            // Await the render (animation timing is handled inside renderScreen)
+            await renderScreen(scr, cfn, hit);
+            console.log(`*** SPIN LOOP ${loopCount}: renderScreen returned ***`);
 
-            STATE.spinning = true;
-            STATE.win = 0;
-            STATE.cascadeLevel = 0;
-
-            updateMultiplierDisplay(0);
-
-            const spinBtn = document.getElementById('spin-btn');
-            spinBtn.disabled = true;
-            spinBtn.classList.add('cascading');
-
-            console.log('Calling doSpin...');
-            await doSpin();
+            // Small buffer after animation
+            await new Promise(r => setTimeout(r, 100));
+            console.log(`*** SPIN LOOP ${loopCount}: ready for next step ***`);
+        } else {
+            console.log('WARNING: No screen data available!');
         }
 
-        async function doSpin() {
-            // API uses bet per line - with 20 lines, divide total bet by 20
-            const betPerLine = STATE.bet / 20;
-            const res = await api('/slot/spin', { gid: STATE.gid, bet: betPerLine });
-
-            if (!res) {
-                console.error('No response from spin');
-                endSpin();
-                return;
-            }
-
-            // Handle API errors
-            if (res.code || res.what) {
-                console.error('Spin error:', res.what || res.code);
-                alert(res.what || 'Spin failed');
-                endSpin();
-                return;
-            }
-
-            // Update state from response - API returns data in game object
-            if (res.wallet !== undefined) STATE.balance = res.wallet;
-
-            // Free falls remaining is in game.fsr (free spins remaining)
-            const newFreeFalls = (res.game && res.game.fsr !== undefined) ? res.game.fsr : 0;
-
-            // Screen is in game.scr - this is the FINAL screen after all cascades
-            let screen = null;
-            if (res.game && res.game.scr) {
-                screen = res.game.scr;
-            } else if (res.scr) {
-                screen = res.scr;
-            }
-
-            if (!screen) {
-                console.error('No screen in response');
-                endSpin();
-                return;
-            }
-
-            // DEBUG: Log raw screen data and symbol IDs
-            console.log('=== SPIN DEBUG ===');
-            console.log('Raw API response:', JSON.stringify(res, null, 2));
-            console.log('Screen array (5 cols x 3 rows):');
-            for (let col = 0; col < screen.length; col++) {
-                console.log(`  Col ${col}:`, screen[col], `-> symbols: ${screen[col].join(', ')}`);
-            }
-            // Collect all unique symbol IDs
-            const allSymbolIds = new Set();
-            screen.forEach(col => col.forEach(id => allSymbolIds.add(id)));
-            console.log('Unique symbol IDs in this spin:', [...allSymbolIds].sort((a,b) => a-b));
-            console.log('SYMBOLS mapping keys:', Object.keys(SYMBOLS));
-            // Check for unmapped symbols
-            const unmapped = [...allSymbolIds].filter(id => !SYMBOLS[id]);
-            if (unmapped.length > 0) {
-                console.warn('UNMAPPED SYMBOL IDS:', unmapped);
-            }
-            console.log('==================');
-
-            // Animate the FINAL screen (single drop animation)
-            console.log('doSpin: calling renderScreen with animate=true');
-            renderScreen(screen, true);
-            STATE.screen = screen;
-
-            // Wait for drop animation to complete
-            await sleep(800 + 5 * 100); // base time + column stagger
-
-            // Show wins if any (visual only - API already calculated everything)
-            if (res.wins && res.wins.length > 0) {
-                await showWins(res);
-            }
-
-            // Check for free falls trigger (entering bonus mode)
-            const previousFreeFalls = STATE.freeFalls;
-            if (newFreeFalls > 0 && !STATE.inFreeFalls && STATE.pendingFreeFalls === 0) {
-                STATE.pendingFreeFalls = newFreeFalls;
-                console.log('Free Falls triggered:', newFreeFalls);
-                showBonusPopup(newFreeFalls);
-            } else if (STATE.inFreeFalls && newFreeFalls > previousFreeFalls) {
-                // Retrigger during free falls
-                console.log('Free Falls retriggered:', newFreeFalls);
-                showBonusPopup(newFreeFalls - previousFreeFalls + 10);
-            }
-
-            STATE.freeFalls = newFreeFalls;
-            updateDisplay();
-
-            // Spin complete - single API call done
-            endSpin();
+        // If no wins, cascade ends
+        if (wins.length === 0) {
+            console.log('No wins - cascade chain complete');
+            break;
         }
 
-        // Show wins visually (no recursive spin calls!)
-        async function showWins(res) {
-            // API returns wins with pay already including the multiplier
-            const totalWin = res.wins.reduce((sum, w) => sum + (w.pay || 0), 0);
+        // Process wins
+        console.log('WINS DETECTED! Gain:', gain);
+        totalWin += gain;
 
-            // Get cascade/multiplier level from API
-            const cfn = (res.game && res.game.cfn) ? res.game.cfn : 1;
-            const cascadeIndex = Math.min(cfn - 1, 3);
+        updateMultiplier(cfn, inBonus);
+        showWin(gain);
+        updateUI();
 
-            STATE.win = totalWin;
-            STATE.cascadeLevel = cascadeIndex;
+        // Show winning cells with glow (includes 800ms wait)
+        console.log('Showing wins...');
+        await showWins(wins);
 
-            console.log('Win:', totalWin, 'Multiplier level:', cascadeIndex);
-
-            // Update multiplier display
-            updateMultiplierDisplay(cascadeIndex);
-
-            // Highlight winning cells
-            highlightWins(res.wins);
-
-            // Show win amount
-            showWinDisplay(totalWin);
-
-            // Wait to show winning symbols
-            await sleep(1500);
-
-            // Clear winning highlights
-            document.querySelectorAll('.cell.winning').forEach(cell => {
-                cell.classList.remove('winning');
-            });
-
-            // NO recursive doSpin() call - API already gave us final state
+        // Check if free spins were just triggered (scatter wins award FS)
+        if (res.game?.fsr > 0 && !inBonus) {
+            // Free spins just awarded! Show new overlay
+            console.log('FREE SPINS TRIGGERED! Count:', res.game.fsr);
+            bonusTotalWin = 0;  // Reset bonus total when entering bonus
+            await showNewFreeSpinsPortal(res.game.fsr);
+            inBonus = true;
         }
 
-        function highlightWins(wins) {
-            const cells = document.querySelectorAll('.cell');
-            wins.forEach(win => {
-                if (win.xy) {
-                    // API xy format: [[col, row], ...] where col=1-5, row=1-3 (1-indexed!)
-                    // Grid is laid out row by row: row0(col0-4), row1(col0-4), row2(col0-4)
-                    win.xy.forEach(([col1, row1]) => {
-                        const col = col1 - 1; // Convert to 0-indexed
-                        const row = row1 - 1;
-                        const index = row * 5 + col;
-                        console.log(`Highlight: col=${col}, row=${row}, index=${index}`);
-                        if (cells[index]) {
-                            cells[index].classList.add('winning');
-                        }
-                    });
-                }
-            });
-        }
+        // Small delay before next cascade drop
+        console.log('Preparing next cascade...');
+        await new Promise(r => setTimeout(r, 150));
+    }
 
-        function showWinDisplay(amount) {
-            const display = document.getElementById('win-display');
-            display.textContent = '+' + amount;
-            display.classList.remove('show');
-            void display.offsetWidth; // Force reflow
-            display.classList.add('show');
-            
-            document.getElementById('win').textContent = STATE.win;
-        }
+    // Done spinning
+    console.log('========== SPIN COMPLETE ==========');
+    console.log('Total win:', totalWin);
 
-        function showBonusPopup(spins) {
-            document.getElementById('bonus-spins-count').textContent = spins;
-            document.getElementById('bonus-overlay').classList.add('show');
-        }
+    // Check for big win display (after cascade chain completes)
+    const currentBet = BETS[betIdx];
+    await showBigWin(totalWin, currentBet);
 
-        function startFreeFalls() {
-            document.getElementById('bonus-overlay').classList.remove('show');
-            STATE.inFreeFalls = true;
-            STATE.freeFalls = STATE.pendingFreeFalls;
-            STATE.pendingFreeFalls = 0;
-            updateMultiplierDisplay(0);
-            updateDisplay();
-            endSpin();
-        }
+    // Add this spin's win to bonus total if in bonus
+    if (inBonus) {
+        bonusTotalWin += totalWin;
+    }
 
-        function endSpin() {
-            STATE.spinning = false;
-            STATE.cascadeLevel = 0;
-            updateMultiplierDisplay(0);
+    spinning = false;
+    $('spinBtn').disabled = false;
+    $('spinBtn').textContent = freeFalls > 0 ? 'FREE' : 'SPIN';
+    updateMultiplier(1, freeFalls > 0);
+    clearWins();
+    updateUI();
 
-            const spinBtn = document.getElementById('spin-btn');
-            spinBtn.disabled = false;
-            spinBtn.classList.remove('cascading');
+    // Check if bonus just ended
+    if (inBonus && freeFalls <= 0) {
+        console.log('BONUS ENDED! Total bonus win:', bonusTotalWin);
+        await showNewFreeSpinsEnd(bonusTotalWin);
+        bonusTotalWin = 0;  // Reset for next bonus
+        return;  // Don't auto-spin after bonus ends
+    }
 
-            // Check if free falls ended
-            if (STATE.inFreeFalls && STATE.freeFalls <= 0) {
-                STATE.inFreeFalls = false;
-                console.log('Free Falls bonus ended! Total win:', STATE.win);
-                // Could show bonus end popup here
+    // Auto-spin for free falls
+    if (freeFalls > 0) {
+        setTimeout(spin, 1000);
+    }
+}
+
+// Free spins portal display - START of free spins
+async function showFreeSpinsPortal(freeSpinsCount) {
+    const overlay = document.getElementById('portalOverlay');
+    const titleEl = document.getElementById('portalTitle');
+    const countEl = document.getElementById('portalCount');
+    const subtitleEl = document.getElementById('portalSubtitle');
+    const winDisplayEl = document.getElementById('portalWinDisplay');
+
+    // Reset for start display
+    titleEl.textContent = 'FREE SPINS';
+    countEl.textContent = freeSpinsCount;
+    subtitleEl.textContent = 'Good Luck!';
+    subtitleEl.style.display = 'block';
+    winDisplayEl.style.display = 'none';
+
+    // Reset animations
+    titleEl.style.animation = 'none';
+    countEl.style.animation = 'none';
+    subtitleEl.style.animation = 'none';
+    void titleEl.offsetHeight;
+    titleEl.style.animation = '';
+    countEl.style.animation = '';
+    subtitleEl.style.animation = '';
+
+    // Open portal
+    overlay.classList.add('active');
+
+    // Wait for animation + display time
+    await new Promise(r => setTimeout(r, 3500));
+
+    // Close portal
+    overlay.classList.add('closing');
+    await new Promise(r => setTimeout(r, 600));
+
+    // Reset
+    overlay.classList.remove('active', 'closing');
+}
+
+// Free spins portal display - END of free spins with total win
+async function showFreeSpinsEnd(totalWinAmount) {
+    const overlay = document.getElementById('portalOverlay');
+    const titleEl = document.getElementById('portalTitle');
+    const countEl = document.getElementById('portalCount');
+    const subtitleEl = document.getElementById('portalSubtitle');
+    const winDisplayEl = document.getElementById('portalWinDisplay');
+    const winAmountEl = document.getElementById('portalWinAmount');
+
+    // Setup for end display
+    titleEl.textContent = 'CONGRATULATIONS!';
+    countEl.textContent = '';
+    subtitleEl.style.display = 'none';
+    winDisplayEl.style.display = 'block';
+    winAmountEl.textContent = totalWinAmount.toFixed(2);
+
+    // Reset animations
+    titleEl.style.animation = 'none';
+    winDisplayEl.style.animation = 'none';
+    void titleEl.offsetHeight;
+    titleEl.style.animation = '';
+    winDisplayEl.style.animation = '';
+
+    // Open portal
+    overlay.classList.add('active');
+
+    // Wait for display time
+    await new Promise(r => setTimeout(r, 4000));
+
+    // Close portal
+    overlay.classList.add('closing');
+    await new Promise(r => setTimeout(r, 600));
+
+    // Reset
+    overlay.classList.remove('active', 'closing');
+}
+
+// Count scatters on screen (one per column max)
+function countScatters(screen) {
+    let count = 0;
+    for (let col = 0; col < 5; col++) {
+        for (let row = 0; row < 3; row++) {
+            if (screen[col][row] === SCATTER_SYMBOL_ID) {
+                count++;
+                break; // Only count one per column
             }
-
-            // Update button text based on mode
-            spinBtn.textContent = STATE.freeFalls > 0 ? 'FREE' : 'DROP';
-
-            updateDisplay();
-            console.log('Spin ended. Balance:', STATE.balance, 'Win:', STATE.win, 'Free Falls:', STATE.freeFalls);
         }
+    }
+    return count;
+}
 
-        function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
+// Start
+init();
+</script>
 
-        // Preload images
-        function preloadImages() {
-            Object.values(SYMBOLS).forEach(src => {
-                const img = new Image();
-                img.src = src;
-            });
-        }
+<!-- Portal Overlay -->
+<div class="portal-overlay" id="portalOverlay">
+    <div class="portal-container">
+        <img src="assets/FSback.webp" class="portal-stone" alt="">
+        <div class="portal-text-overlay">
+            <div class="portal-title" id="portalTitle">FREE SPINS</div>
+            <div class="portal-count" id="portalCount">10</div>
+            <div class="portal-subtitle" id="portalSubtitle">Good Luck!</div>
+            <div class="portal-win-display" id="portalWinDisplay" style="display: none;">
+                TOTAL WIN
+                <span class="portal-win-amount" id="portalWinAmount">0.00</span>
+            </div>
+        </div>
+        <div class="portal-particles">
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+        </div>
+    </div>
+</div>
 
-        // Start
-        preloadImages();
-        init();
-    </script>
+<!-- Big Win Overlay -->
+<div class="bigwin-overlay" id="bigwinOverlay">
+    <img src="assets/lighting5.webp" class="bigwin-beam" alt="">
+    <img src="assets/lighting1.webp" class="bigwin-lightning" alt="">
+    <div class="bigwin-content">
+        <img src="assets/FSback.webp" class="bigwin-slab" alt="">
+        <div class="bigwin-text">
+            <div class="bigwin-tier" id="bigwinTier">BIG WIN</div>
+            <div class="bigwin-amount" id="bigwinAmount">0.00</div>
+        </div>
+    </div>
+</div>
+
+<!-- Free Spins Overlay - EPIC VERSION -->
+<div class="freespins-overlay" id="freespinsOverlay">
+    <!-- Pulsing light burst background -->
+    <div class="fs-light-burst" id="fsLightBurst"></div>
+
+    <!-- Layer 1: Starburst - spins FAST -->
+    <img src="assets/lighting4.webp" class="fs-starburst" id="fsStarburst" alt="">
+
+    <!-- Layer 2: Portal ring - spins slower -->
+    <img src="assets/portal.webp" class="fs-portal" id="fsPortal" alt="">
+
+    <!-- Layer 3: Energy orb - pulses behind slab -->
+    <img src="assets/lighting2.webp" class="fs-orb" id="fsOrb" alt="">
+
+    <!-- Layer 4: Horizontal beam - flash on impact -->
+    <img src="assets/lighting5.webp" class="fs-beam" id="fsBeam" alt="">
+
+    <!-- Layer 5: Lightning bolt - random flashes -->
+    <img src="assets/lighting1.webp" class="fs-bolt" id="fsBolt" alt="">
+
+    <!-- Layer 6: Content (slab + text) -->
+    <div class="fs-content" id="fsContent">
+        <div class="fs-number" id="fsNumber">10</div>
+        <div class="fs-slab-wrapper">
+            <img src="assets/slab.webp" class="fs-slab" alt="">
+            <div class="fs-label" id="fsLabel">FREE SPINS</div>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>
