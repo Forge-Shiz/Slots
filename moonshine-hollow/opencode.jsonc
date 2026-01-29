@@ -1,0 +1,22 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "model": "anthropic/claude-sonnet-4-5",
+
+  "agent": {
+    "build": {
+      "mode": "primary",
+      "description": "Main builder (Claude)",
+      "model": "anthropic/claude-sonnet-4-5",
+      "tools": { "write": true, "edit": true, "bash": true }
+    },
+
+    "gpt-reviewer": {
+      "mode": "subagent",
+      "description": "Code reviewer (GPT)",
+      "model": "openai/gpt-4o",
+      "prompt": "Review diffs for bugs, security issues, and exploits. Be blunt and specific."
+    }
+  }
+}
+

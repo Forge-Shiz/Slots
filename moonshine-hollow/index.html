@@ -1,0 +1,1932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Moonshine Hollow Slots</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rye&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body{background:url('assets/bg3.webp') center/cover no-repeat fixed;margin:0;padding-bottom:130px}
+.symbol-img{width:100%;height:100%;background-size:contain;background-repeat:no-repeat;background-position:center;backface-visibility:hidden;transform:translateZ(0)}
+.reel-wrapper{position:relative;display:inline-block}
+.reel-frame-overlay{position:absolute;top:-75px;left:-75px;right:-75px;bottom:-55px;background:url('assets/frame.webp') center/100% 100% no-repeat;z-index:20;pointer-events:none}
+.reel-window{overflow:visible;height:554px;position:relative;border-radius:12px}
+.reel-window.reel5{border-radius:12px;margin-left:-8px}
+.pipe-divider{position:relative;width:50px;flex-shrink:0;align-self:stretch;margin:-68px 0 -48px 0;pointer-events:none}
+.pipe-divider img{width:100%;height:100%;object-fit:fill}
+.reels-container{overflow:hidden;padding:82px 60px 65px 20px;margin:-82px -60px -65px -20px;position:relative}
+#reels{position:relative;z-index:2}
+#plank-bg{position:absolute;top:0;right:0;bottom:0;background:url('assets/plank.webp') center/100% 100% no-repeat;z-index:1;pointer-events:none}
+.reel-clipper{overflow:hidden;height:554px;border-radius:12px}
+.reel-window.reel5 .reel-clipper{background:rgba(245,228,200,0.3)}
+.reel-strip{display:flex;flex-direction:column;gap:8px;position:relative;will-change:transform}
+.reel-cell{background:rgba(0,0,0,0.5);border-radius:12px;border:3px solid rgba(255,200,0,0.3);width:169px;height:169px;flex-shrink:0;position:relative;box-sizing:border-box}
+.winner-cell{
+  border:4px solid #ffd700 !important;
+  box-shadow:0 0 30px rgba(255,215,0,0.9), inset 0 0 20px rgba(255,215,0,0.4);
+  animation:pulse-win 0.5s ease-in-out infinite alternate;
+  z-index:10;
+}
+@keyframes pulse-win{
+  from{box-shadow:0 0 20px rgba(255,215,0,0.7), inset 0 0 15px rgba(255,215,0,0.3)}
+  to{box-shadow:0 0 50px rgba(255,215,0,1), inset 0 0 30px rgba(255,215,0,0.5)}
+}
+.reel-anticipation{
+  animation:pulse-antic 0.8s ease-in-out infinite alternate;
+  border-radius:12px;
+  position:relative;
+  z-index:25;
+}
+@keyframes pulse-antic{
+  from{box-shadow:0 0 25px rgba(255,180,0,0.4), inset 0 0 15px rgba(255,180,0,0.2)}
+  to{box-shadow:0 0 80px rgba(255,180,0,1), inset 0 0 40px rgba(255,180,0,0.6)}
+}
+.scatter-glow{
+  animation:scatter-pulse 0.6s ease-in-out infinite alternate;
+  z-index:30;
+}
+@keyframes scatter-pulse{
+  from{
+    border:4px solid #ffd700 !important;
+    box-shadow:0 0 30px rgba(255,215,0,0.8), inset 0 0 20px rgba(255,215,0,0.4);
+  }
+  to{
+    border:6px solid #ffed4e !important;
+    box-shadow:0 0 60px rgba(255,237,78,1), inset 0 0 40px rgba(255,237,78,0.6);
+  }
+}
+#anticipation-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.5);
+  z-index:18;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity 0.5s;
+}
+#anticipation-overlay.active{opacity:1}
+@keyframes screen-shake{
+  0%,100%{transform:translate(0,0)}
+  10%{transform:translate(-2px,1px)}
+  20%{transform:translate(2px,-1px)}
+  30%{transform:translate(-1px,2px)}
+  40%{transform:translate(1px,-2px)}
+  50%{transform:translate(-2px,-1px)}
+  60%{transform:translate(2px,1px)}
+  70%{transform:translate(-1px,-2px)}
+  80%{transform:translate(1px,2px)}
+  90%{transform:translate(-2px,1px)}
+}
+.shake{animation:screen-shake 0.5s ease-in-out}
+.shake-big{animation:screen-shake 0.4s ease-in-out 3}
+@keyframes reel-land{
+  0%{transform:translateY(-10px)}
+  60%{transform:translateY(2px)}
+  100%{transform:translateY(0)}
+}
+@keyframes reel-shake{
+  0%{transform:translateX(-1.5px)}
+  100%{transform:translateX(1.5px)}
+}
+.reel-cell, .reel-strip, .symbol-img {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+.reel-frame{padding:70px;display:inline-block}
+.win-area{height:80px;display:flex;align-items:center;justify-content:center}
+
+/* Bottom bar - adapted from area-51 */
+.bottom-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:linear-gradient(to top, rgba(0,0,0,0.97) 0%, rgba(20,10,0,0.92) 100%);
+  border-top:2px solid rgba(255,180,0,0.3);
+  padding:10px 20px 14px;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  z-index:100;
+}
+.stats-row{
+  display:flex;justify-content:space-between;align-items:center;
+  width:100%;max-width:500px;
+}
+.stat-item{text-align:center;min-width:90px}
+.stat-label{
+  font-size:10px;font-weight:600;letter-spacing:1.5px;
+  text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:2px;
+}
+.stat-value{font-size:20px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
+.stat-value.balance-val{color:#4ade80}
+.stat-value.bet-val{color:#fbbf24}
+.stat-value.win-val{color:rgba(255,255,255,0.3)}
+.stat-value.win-active{color:#ffd700;text-shadow:0 0 15px rgba(255,215,0,0.5)}
+
+.controls-row{display:flex;align-items:center;gap:16px}
+.ctrl-btn{
+  width:40px;height:40px;border-radius:50%;
+  border:2px solid rgba(255,180,0,0.3);background:rgba(255,180,0,0.08);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all 0.2s;color:#fbbf24;font-size:16px;font-weight:bold;
+}
+.ctrl-btn:hover{background:rgba(255,180,0,0.2);border-color:rgba(255,180,0,0.6)}
+.spin-btn{
+  width:68px;height:68px;border-radius:50%;
+  border:3px solid #f59e0b;
+  background:linear-gradient(145deg, #92400e 0%, #78350f 100%);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all 0.2s;
+  box-shadow:0 0 20px rgba(245,158,11,0.3), inset 0 2px 4px rgba(255,255,255,0.15);
+  color:#fde68a;font-size:18px;font-weight:900;
+}
+.spin-btn:hover:not(:disabled){transform:scale(1.05);box-shadow:0 0 35px rgba(245,158,11,0.5);border-color:#fbbf24}
+.spin-btn:disabled{opacity:0.5;cursor:not-allowed}
+#fs-start-btn:hover,#fs-summary-btn:hover{transform:translateX(-50%) scale(1.08);box-shadow:0 0 40px rgba(255,215,0,1)}
+#fs-popup.hidden,#bigwin-overlay.hidden,#fs-hud.hidden,#fs-summary.hidden{display:none!important}
+@keyframes bigwin-pulse{
+  from{transform:scale(1);text-shadow:0 0 40px #ff8c00,0 0 80px #ff4500,0 0 120px #ff0000,4px 4px 8px #000}
+  to{transform:scale(1.08);text-shadow:0 0 60px #ffd700,0 0 100px #ff8c00,0 0 150px #ff4500,6px 6px 12px #000}
+}
+</style>
+</head>
+<body class="text-white">
+<audio id="bgm"></audio>
+<audio id="spin-sound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_7a9080e4a0.mp3"></audio>
+<audio id="win-sound" src="https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3"></audio>
+
+<!-- Anticipation overlay -->
+<div id="anticipation-overlay"></div>
+<canvas id="particle-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:22;display:none"></canvas>
+
+<div class="min-h-screen bg-black/30 flex flex-col items-center">
+<header class="text-center pt-2">
+<img src="assets/logo.webp" alt="Moonshine Hollow Slots" class="mx-auto h-40 object-contain">
+</header>
+
+<div class="flex justify-center">
+<div class="reel-frame">
+<div class="reel-wrapper">
+<div class="reels-container">
+<div id="reels" class="flex gap-3"></div>
+</div>
+<div class="reel-frame-overlay"></div>
+</div>
+</div>
+</div>
+
+<div class="win-area">
+<div id="win-display" class="hidden">
+<div class="inline-block bg-black/80 border-2 border-yellow-500 rounded-xl px-12 py-3">
+<div class="text-yellow-400 text-4xl font-black" id="win-amount">$0</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Free Spins Popup (initial) -->
+<div id="fs-popup" class="hidden" style="position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85)">
+<div style="position:relative;width:95vw;max-width:1000px;text-align:center">
+<img src="assets/FS.webp" style="width:100%;mix-blend-mode:screen;filter:brightness(1.3)" alt="">
+<div style="position:absolute;top:38%;left:0;right:0;font-family:'Rye',serif;font-size:clamp(32px,7vw,64px);color:#ffd700;text-shadow:0 0 20px #ff8c00,0 0 40px #ff4500,0 4px 0 #8B4513,0 6px 0 #654321,0 8px 15px rgba(0,0,0,0.8);letter-spacing:3px;transform:rotate(-2deg)">FREE SPINS</div>
+<div id="fs-count" style="position:absolute;top:52%;left:0;right:0;font-family:'Rye',serif;font-size:clamp(72px,16vw,140px);color:#fff;text-shadow:0 0 30px #ffd700,0 0 60px #ff8c00,0 6px 0 #8B4513,0 10px 0 #654321,0 12px 20px rgba(0,0,0,0.9)">12</div>
+<button id="fs-start-btn" style="position:absolute;bottom:8%;left:50%;transform:translateX(-50%);padding:16px 64px;font-family:'Rye',serif;font-size:clamp(22px,4.5vw,32px);color:#000;background:linear-gradient(180deg,#ffd700 0%,#ff8c00 50%,#cc6600 100%);border:4px solid #fff;border-radius:40px;cursor:pointer;box-shadow:0 0 30px rgba(255,215,0,0.9),0 6px 0 #8B4513;transition:transform 0.2s,box-shadow 0.2s">START</button>
+</div>
+</div>
+
+<!-- Free Spins HUD (during free spins) -->
+<div id="fs-hud" class="hidden" style="position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:150;background:linear-gradient(180deg,rgba(0,0,0,0.9) 0%,rgba(40,20,0,0.85) 100%);border:3px solid #ffd700;border-radius:20px;padding:12px 30px;text-align:center;box-shadow:0 0 30px rgba(255,215,0,0.5)">
+<div style="font-family:'Rye',serif;font-size:18px;color:#ffd700;text-shadow:0 0 10px #ff8c00;letter-spacing:2px">FREE SPINS</div>
+<div style="display:flex;gap:30px;margin-top:8px;align-items:center;justify-content:center">
+<div>
+<div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase">Remaining</div>
+<div id="fs-hud-remaining" style="font-family:'Rye',serif;font-size:28px;color:#fff;text-shadow:0 0 10px #ffd700">8 of 12</div>
+</div>
+<div style="width:2px;height:40px;background:rgba(255,215,0,0.3)"></div>
+<div>
+<div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase">Total Won</div>
+<div id="fs-hud-total" style="font-family:'Rye',serif;font-size:28px;color:#4ade80;text-shadow:0 0 10px #22c55e">$0.00</div>
+</div>
+</div>
+</div>
+
+<!-- Free Spins End Summary -->
+<div id="fs-summary" class="hidden" style="position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85)">
+<div style="position:relative;width:95vw;max-width:1000px;text-align:center">
+<img src="assets/FSpaid.webp" style="width:100%;mix-blend-mode:screen;filter:brightness(1.3)" alt="">
+<div id="fs-summary-total" style="position:absolute;top:52%;left:0;right:0;font-family:'Rye',serif;font-size:clamp(56px,14vw,120px);color:#4ade80;text-shadow:0 0 40px #22c55e,0 0 80px #22c55e,0 6px 0 #166534,0 10px 0 #14532d,0 12px 20px rgba(0,0,0,0.9)">$0.00</div>
+<button id="fs-summary-btn" style="position:absolute;bottom:8%;left:50%;transform:translateX(-50%);padding:16px 64px;font-family:'Rye',serif;font-size:clamp(22px,4.5vw,32px);color:#000;background:linear-gradient(180deg,#ffd700 0%,#ff8c00 50%,#cc6600 100%);border:4px solid #fff;border-radius:40px;cursor:pointer;box-shadow:0 0 30px rgba(255,215,0,0.9),0 6px 0 #8B4513;transition:transform 0.2s,box-shadow 0.2s">COLLECT</button>
+</div>
+</div>
+
+<!-- Big Win Overlay -->
+<div id="bigwin-overlay" class="hidden" style="position:fixed;inset:0;z-index:250;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.9);cursor:pointer">
+<div id="bigwin-text" style="position:absolute;top:6%;left:0;right:0;text-align:center;z-index:260;font-family:'Rye',serif;font-size:clamp(48px,12vw,120px);color:#ffd700;text-shadow:0 0 40px #ff8c00,0 0 80px #ff4500,0 0 120px #ff0000,0 6px 0 #8B4513,0 10px 0 #654321,0 12px 25px rgba(0,0,0,0.9);letter-spacing:6px;animation:bigwin-pulse 0.5s ease-in-out infinite alternate">BIG WIN!</div>
+<video id="bigwin-video" style="max-width:95%;max-height:60%;object-fit:contain" playsinline></video>
+<div id="bigwin-amount" style="position:absolute;bottom:8%;left:0;right:0;text-align:center;z-index:260;font-family:'Rye',serif;font-size:clamp(40px,11vw,100px);color:#fff;text-shadow:0 0 30px #ffd700,0 0 60px #ff8c00,0 5px 0 #8B4513,0 8px 0 #654321,0 10px 20px rgba(0,0,0,0.9)">$0.00</div>
+</div>
+
+<div class="bottom-bar">
+<div class="stats-row">
+<div class="stat-item">
+<div class="stat-label">Balance</div>
+<div class="stat-value balance-val" id="balance">0.00</div>
+</div>
+<div class="stat-item">
+<div class="stat-label">Win</div>
+<div class="stat-value win-val" id="last-win">0.00</div>
+</div>
+<div class="stat-item">
+<div class="stat-label">Bet</div>
+<div class="stat-value bet-val" id="bet-display">0.20</div>
+<div style="font-size:9px;color:rgba(255,255,255,0.3);margin-top:1px">10 LINES</div>
+</div>
+</div>
+<div class="controls-row">
+<button class="ctrl-btn" id="bet-down" title="Decrease Bet">-</button>
+<button class="spin-btn" id="spin-btn" title="Spin">SPIN</button>
+<button class="ctrl-btn" id="bet-up" title="Increase Bet">+</button>
+<button class="ctrl-btn" id="sound-btn" title="Toggle Sound">🔇</button>
+</div>
+</div>
+
+<script>
+// Reels 1-4: symbols 1-12 (1=wild, 12=scatter)
+const SYM={
+1:'assets/symbols/wild.webp',
+2:'assets/symbols/scatter.webp',
+3:'assets/symbols/possum.webp',
+4:'assets/symbols/raccoon.webp',
+5:'assets/symbols/crate.webp',
+6:'assets/symbols/mash.webp',
+7:'assets/symbols/banjo.webp',
+8:'assets/symbols/shotgun.webp',
+9:'assets/symbols/sugar.webp',
+10:'assets/symbols/still.webp',
+11:'assets/symbols/handcuffs.webp',
+12:'assets/symbols/scatter_new.webp'
+};
+const SYMCOUNT=12;
+const SCATTER_ID=12;
+// Reel 5: multiplier images - API returns actual multiplier values (1,2,3,5,10,20)
+const SYM5={
+1:'assets/symbols/mult1.webp',
+2:'assets/symbols/mult2.webp',
+3:'assets/symbols/mult3.webp',
+5:'assets/symbols/mult5.webp',
+10:'assets/symbols/mult10.webp',
+20:'assets/symbols/mult20.webp'
+};
+const REEL5_VALS=[1,2,3,5]; // Regular game
+const REEL5_FS_VALS=[2,3,5,10,20]; // Free spins (no 1x!)
+const MAX_STRIP=53;
+function preloadImages(){
+const urls=[];
+for(let id=1;id<=SYMCOUNT;id++)urls.push(SYM[id]);
+Object.values(SYM5).forEach(src=>urls.push(src));
+urls.push('assets/bg3.webp','assets/logo.webp','assets/frame.webp','assets/pipe.webp');
+return Promise.all(urls.map(src=>new Promise(resolve=>{
+const img=new Image();img.onload=img.onerror=resolve;img.src=src;
+})));
+}
+// 10 Novomatic paylines (row per reel, 1-indexed)
+const PAYLINES=[[2,2,2,2,2],[1,1,1,1,1],[3,3,3,3,3],[1,2,3,2,1],[3,2,1,2,3],[2,3,3,3,2],[2,1,1,1,2],[3,3,2,1,1],[1,1,2,3,3],[3,2,2,2,1]];
+const LINE_COLORS=['#ff2222','#22ff22','#2266ff','#ffff22','#ff22ff','#22ffff','#ff8822','#88ff22','#ff2288','#8822ff'];
+const TOK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzbG90b3BvbCIsImV4cCI6NDg2NzQ0NzYxNywibmJmIjoxNzA2NjQ3NjE3LCJ1aWQiOjN9.6g2Hig9ErG8IbvzkPppry5F8HJsMunZPwuQzmetGh4c';
+const LINES=10;
+const TOTAL_BETS=[0.20,0.50,1.00,2.00,5.00,10.00,20.00];
+function perLineBet(){return TOTAL_BETS[S.betIdx]/LINES}
+let S={gid:null,bal:1000,betIdx:0,spinning:false,scr:null,sound:false};
+
+async function api(e,d=null){
+try{
+const r=await fetch(e,{method:d?'POST':'GET',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOK},body:d?JSON.stringify(d):null});
+return await r.json();
+}catch(err){console.log(err);return null}
+}
+
+const SONGS=['assets/song1.mp3','assets/song2.mp3','assets/song3.mp3'];
+let lastSongIdx=-1;
+function playRandomSong(){
+const b=document.getElementById('bgm');
+let idx;do{idx=Math.floor(Math.random()*SONGS.length)}while(idx===lastSongIdx&&SONGS.length>1);
+lastSongIdx=idx;b.src=SONGS[idx];b.play().catch(()=>{});
+}
+document.getElementById('bgm').addEventListener('ended',()=>{if(S.sound)playRandomSong()});
+
+function toggleSound(){
+S.sound=!S.sound;
+const btn=document.getElementById('sound-btn');
+if(S.sound){playRandomSong();btn.textContent='🔊'}
+else{document.getElementById('bgm').pause();btn.textContent='🔇'}
+}
+
+function playSound(id){if(S.sound){const snd=document.getElementById(id);if(snd){snd.currentTime=0;snd.play().catch(()=>{})}}}
+
+let audioCtx=null;
+let activeAnticipationSounds=[];
+function getAudioCtx(){if(!audioCtx)try{audioCtx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}return audioCtx}
+function stopAnticipationSounds(){
+activeAnticipationSounds.forEach(s=>{try{s.stop()}catch(e){}});
+activeAnticipationSounds=[];
+}
+function playDrumroll(durMs){
+if(!S.sound)return;
+const ctx=getAudioCtx();if(!ctx)return;
+const dur=durMs/1000;
+// Rapid low-frequency hits that accelerate
+const noise=ctx.createBufferSource();
+const buf=ctx.createBuffer(1,ctx.sampleRate*dur,ctx.sampleRate);
+const data=buf.getChannelData(0);
+// Generate accelerating taps
+let pos=0;const startInterval=0.08,endInterval=0.02;
+while(pos<data.length){
+const t=pos/data.length;
+const interval=startInterval+(endInterval-startInterval)*t;
+const samples=Math.floor(interval*ctx.sampleRate);
+// Each tap: short burst of noise
+for(let j=0;j<Math.min(120,data.length-pos);j++){
+data[pos+j]=(Math.random()*2-1)*0.15*(1-j/120);
+}
+pos+=samples;
+}
+noise.buffer=buf;
+const filt=ctx.createBiquadFilter();filt.type='lowpass';filt.frequency.value=200;
+const gain=ctx.createGain();
+gain.gain.setValueAtTime(0.3,ctx.currentTime);
+gain.gain.linearRampToValueAtTime(0.6,ctx.currentTime+dur*0.8);
+gain.gain.linearRampToValueAtTime(0,ctx.currentTime+dur);
+noise.connect(filt).connect(gain).connect(ctx.destination);
+noise.start();noise.stop(ctx.currentTime+dur);
+}
+
+function playTensionSound(durMs){
+if(!S.sound)return;
+const ctx=getAudioCtx();if(!ctx)return;
+const dur=durMs/1000;const now=ctx.currentTime;
+const osc=ctx.createOscillator();
+osc.type='sine';
+osc.frequency.setValueAtTime(55,now);
+osc.frequency.exponentialRampToValueAtTime(120,now+dur);
+const lfo=ctx.createOscillator();
+lfo.frequency.setValueAtTime(3.5,now);
+lfo.frequency.linearRampToValueAtTime(1.5,now+dur);
+const lfoGain=ctx.createGain();lfoGain.gain.value=0.15;
+const mainGain=ctx.createGain();
+mainGain.gain.setValueAtTime(0.08,now);
+mainGain.gain.linearRampToValueAtTime(0.35,now+dur*0.7);
+mainGain.gain.linearRampToValueAtTime(0,now+dur);
+const filt=ctx.createBiquadFilter();filt.type='lowpass';filt.frequency.value=150;
+lfo.connect(lfoGain);lfoGain.connect(mainGain.gain);
+osc.connect(filt).connect(mainGain).connect(ctx.destination);
+lfo.start(now);osc.start(now);lfo.stop(now+dur);osc.stop(now+dur);
+activeAnticipationSounds.push(osc,lfo);
+}
+
+function playHeartbeat(durMs){
+if(!S.sound)return;
+const ctx=getAudioCtx();if(!ctx)return;
+const dur=durMs/1000;const now=ctx.currentTime;
+const startBpm=60,endBpm=140;
+const startInterval=60/startBpm,endInterval=60/endBpm;
+let t=0;
+const beats=[];
+while(t<dur){
+const progress=t/dur;
+const interval=startInterval-(startInterval-endInterval)*progress;
+// Create two quick bass hits (lub-dub)
+for(let i=0;i<2;i++){
+const osc=ctx.createOscillator();
+osc.type='sine';
+osc.frequency.value=i===0?60:50;
+const gain=ctx.createGain();
+const beatStart=now+t+i*0.08;
+gain.gain.setValueAtTime(0,beatStart);
+gain.gain.linearRampToValueAtTime(0.4,beatStart+0.01);
+gain.gain.exponentialRampToValueAtTime(0.01,beatStart+0.12);
+osc.connect(gain).connect(ctx.destination);
+osc.start(beatStart);
+osc.stop(beatStart+0.15);
+beats.push(osc);
+}
+t+=interval;
+}
+activeAnticipationSounds.push(...beats);
+}
+
+// Particle System Class
+class ParticleSystem {
+constructor(canvas) {
+this.canvas = canvas;
+this.ctx = canvas.getContext('2d');
+this.particles = [];
+this.animationId = null;
+this.emitters = []; // Continuous spark emitters
+this.running = false;
+}
+
+addSpark(x, y, options = {}) {
+const color = options.color || (Math.random() > 0.5 ? '#FFD700' : '#FF6B00');
+const size = options.size || (Math.random() * 4 + 2);
+const vx = options.vx !== undefined ? options.vx : (Math.random() - 0.5) * 3;
+const vy = options.vy !== undefined ? options.vy : (-Math.random() * 5 - 2);
+this.particles.push({
+x, y, vx, vy,
+size,
+life: 1,
+decay: 0.015 + Math.random() * 0.01,
+color,
+glow: options.glow !== false
+});
+}
+
+addEmber(x, y) {
+this.particles.push({
+x, y,
+vx: (Math.random() - 0.5) * 2,
+vy: -Math.random() * 3 - 1,
+size: Math.random() * 3 + 1,
+life: 1,
+decay: 0.008 + Math.random() * 0.008,
+color: '#FF6B00',
+glow: true
+});
+}
+
+addFire(x, y) {
+const colors = ['#FF4500', '#FF6B00', '#FFA500', '#FFD700'];
+this.particles.push({
+x, y,
+vx: (Math.random() - 0.5) * 1.5,
+vy: -Math.random() * 4 - 3,
+size: Math.random() * 5 + 3,
+life: 1,
+decay: 0.02 + Math.random() * 0.02,
+color: colors[Math.floor(Math.random() * colors.length)],
+glow: true
+});
+}
+
+explode(x, y, count = 50) {
+for (let i = 0; i < count; i++) {
+const angle = Math.random() * Math.PI * 2;
+const speed = Math.random() * 10 + 3;
+const colors = ['#FFD700', '#FF6B00', '#FF4500', '#FFA500', '#FFED4E', '#FFF'];
+this.particles.push({
+x, y,
+vx: Math.cos(angle) * speed,
+vy: Math.sin(angle) * speed,
+size: Math.random() * 7 + 2,
+life: 1,
+decay: 0.015 + Math.random() * 0.01,
+color: colors[Math.floor(Math.random() * colors.length)],
+glow: true
+});
+}
+}
+
+// Add continuous emitter at position (for glowing reels)
+addEmitter(x, y, rate = 5) {
+this.emitters.push({ x, y, rate, counter: 0 });
+}
+
+clearEmitters() {
+this.emitters = [];
+}
+
+update() {
+this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+// Emit particles from active emitters
+this.emitters.forEach(em => {
+em.counter++;
+if (em.counter >= 60 / em.rate) { // emit based on rate per second
+em.counter = 0;
+// Mix of different particle types
+const type = Math.random();
+if (type < 0.5) this.addSpark(em.x, em.y);
+else if (type < 0.8) this.addEmber(em.x, em.y);
+else this.addFire(em.x, em.y);
+// Occasional "pop" spark
+if (Math.random() < 0.1) {
+this.addSpark(em.x, em.y, { size: 8, vx: (Math.random() - 0.5) * 6, vy: -Math.random() * 8 - 2 });
+}
+}
+});
+
+// Update and draw particles
+this.particles = this.particles.filter(p => {
+p.x += p.vx;
+p.y += p.vy;
+p.vy += 0.12; // gravity
+p.vx *= 0.99; // air resistance
+p.life -= p.decay;
+
+if (p.life <= 0) return false;
+
+this.ctx.globalAlpha = p.life;
+this.ctx.fillStyle = p.color;
+if (p.glow) {
+this.ctx.shadowBlur = 15;
+this.ctx.shadowColor = p.color;
+}
+this.ctx.beginPath();
+this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+this.ctx.fill();
+
+return true;
+});
+
+this.ctx.globalAlpha = 1;
+this.ctx.shadowBlur = 0;
+
+if (this.running) {
+this.animationId = requestAnimationFrame(() => this.update());
+}
+}
+
+start() {
+if (this.running) return;
+this.running = true;
+this.canvas.style.display = 'block';
+this.canvas.width = window.innerWidth;
+this.canvas.height = window.innerHeight;
+this.update();
+}
+
+stop() {
+this.running = false;
+if (this.animationId) {
+cancelAnimationFrame(this.animationId);
+this.animationId = null;
+}
+this.particles = [];
+this.clearEmitters();
+this.canvas.style.display = 'none';
+this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+}
+}
+
+// Global particle system instance
+let particleSystem = null;
+function getParticleSystem() {
+if (!particleSystem) {
+const canvas = document.getElementById('particle-canvas');
+if (canvas) particleSystem = new ParticleSystem(canvas);
+}
+return particleSystem;
+}
+
+function startParticles() {
+const ps = getParticleSystem();
+if (!ps) return;
+ps.start();
+// Add emitters at reel 3 and 4 positions
+const reels = document.querySelectorAll('.reel-window');
+if (reels[2]) {
+const rect = reels[2].getBoundingClientRect();
+ps.addEmitter(rect.left + rect.width / 2, rect.top + rect.height / 2, 8);
+}
+if (reels[3]) {
+const rect = reels[3].getBoundingClientRect();
+ps.addEmitter(rect.left + rect.width / 2, rect.top + rect.height / 2, 8);
+}
+}
+
+function stopParticles() {
+const ps = getParticleSystem();
+if (ps) ps.stop();
+}
+
+// Bubble video system
+let bubbleVideoElement = null;
+
+function startBubbleVideo() {
+console.log('🫧 Starting bubble video anticipation...');
+const wrapper = document.querySelector('.reel-wrapper');
+if (!wrapper) return;
+
+// Remove old one if exists
+if (bubbleVideoElement) {
+bubbleVideoElement.remove();
+bubbleVideoElement = null;
+}
+
+const vid = document.createElement('video');
+vid.id = 'bubble-canvas';
+vid.playsInline = true;
+vid.loop = true;
+vid.muted = !S.sound;
+// Position over the reels area
+// 9:16 video (vertical) - fit to cover reel area
+// Use mix-blend-mode: screen to make black background transparent
+// Balanced opacity: visible bubbles, readable symbols
+// Gradient mask: subtle fade in center, strong on edges
+vid.style.cssText = `
+position: absolute;
+left: 50%;
+top: 50%;
+transform: translate(-50%, -50%);
+height: 100%;
+width: auto;
+min-width: 100%;
+z-index: 19;
+pointer-events: none;
+object-fit: cover;
+mix-blend-mode: screen;
+opacity: 0.55;
+filter: brightness(1.3) contrast(1.3);
+mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 15%, rgba(0,0,0,0.75) 35%, black 60%);
+-webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 15%, rgba(0,0,0,0.75) 35%, black 60%);
+`;
+wrapper.appendChild(vid);
+vid.src = 'assets/bubs_small.mp4';
+vid.play().catch(() => {});
+bubbleVideoElement = vid;
+}
+
+function stopBubbleVideo(fade = true) {
+if (!bubbleVideoElement) return;
+console.log('🫧 Stopping bubble video...');
+if (fade) {
+bubbleVideoElement.style.transition = 'opacity 0.8s';
+bubbleVideoElement.style.opacity = '0';
+setTimeout(() => {
+if (bubbleVideoElement) {
+bubbleVideoElement.remove();
+bubbleVideoElement = null;
+}
+}, 800);
+} else {
+bubbleVideoElement.remove();
+bubbleVideoElement = null;
+}
+}
+
+function isBubbleVideoPlaying() {
+return bubbleVideoElement !== null;
+}
+
+// Anticipation system
+function triggerAnticipation(){
+console.log('%c 🔥 ANTICIPATION TRIGGERED!','background:red;color:yellow;font-size:18px;padding:6px');
+// Visual effects
+const overlay=document.getElementById('anticipation-overlay');
+if(overlay)overlay.classList.add('active');
+// Screen shake
+const wrapper=document.querySelector('.reel-wrapper');
+if(wrapper){
+wrapper.classList.add('shake');
+setTimeout(()=>wrapper.classList.remove('shake'),500);
+}
+// Start bubble video (moonshine starting to boil!)
+startBubbleVideo();
+// Start particles
+startParticles();
+// Audio effects
+playHeartbeat(3500);
+playTensionSound(3500);
+playDrumroll(3500);
+}
+
+function endAnticipation(success=false){
+console.log('%c 🔥 ANTICIPATION ENDED','background:gray;color:white','Success:',success);
+// Stop visual effects
+const overlay=document.getElementById('anticipation-overlay');
+if(overlay)overlay.classList.remove('active');
+stopParticles();
+stopAnticipationSounds();
+// Remove glow from all cells
+document.querySelectorAll('.scatter-glow').forEach(c=>c.classList.remove('scatter-glow'));
+document.querySelectorAll('.reel-anticipation').forEach(r=>r.classList.remove('reel-anticipation'));
+if(success){
+// Big screen shake and flash
+const wrapper=document.querySelector('.reel-wrapper');
+if(wrapper){
+wrapper.classList.add('shake-big');
+setTimeout(()=>wrapper.classList.remove('shake-big'),1200);
+}
+// Explosion particles
+createExplosion();
+// Keep bubbles playing - they'll transition into flood video
+console.log('🫧 Keeping bubbles for transition to flood video...');
+// Bubbles will be cleaned up when flood video starts
+}else{
+// No 3rd scatter - fade out bubbles
+stopBubbleVideo(true);
+}
+}
+
+function createExplosion(){
+const ps = getParticleSystem();
+if (!ps) return;
+// Find the 3rd scatter position (or use center)
+let explosionX = window.innerWidth / 2;
+let explosionY = window.innerHeight / 2;
+// Try to find the 3rd scatter cell
+const windows = document.querySelectorAll('.reel-window');
+let scattersFound = 0;
+for (let col = 0; col < 4 && col < windows.length; col++) {
+if (S.scr && S.scr[col]) {
+const cells = windows[col].querySelectorAll('.reel-cell');
+S.scr[col].forEach((sym, row) => {
+if (sym === SCATTER_ID) {
+scattersFound++;
+if (scattersFound === 3 && cells[row]) {
+const rect = cells[row].getBoundingClientRect();
+explosionX = rect.left + rect.width / 2;
+explosionY = rect.top + rect.height / 2;
+}
+}
+});
+}
+}
+// Create massive explosion
+ps.explode(explosionX, explosionY, 150);
+// Add extra bursts slightly offset
+setTimeout(() => ps.explode(explosionX - 50, explosionY, 50), 100);
+setTimeout(() => ps.explode(explosionX + 50, explosionY, 50), 150);
+}
+
+// Highlight scatter symbols with glow
+function highlightScatters(){
+const windows=document.querySelectorAll('.reel-window');
+windows.forEach((w,col)=>{
+if(col<4&&S.scr&&S.scr[col]){
+const cells=w.querySelectorAll('.reel-cell');
+S.scr[col].forEach((sym,row)=>{
+if(sym===SCATTER_ID&&cells[row]){
+cells[row].classList.add('scatter-glow');
+}
+});
+}
+});
+}
+
+// Start free spins mode - called when free spins are first triggered
+async function startFreeSpinsMode(totalSpins){
+inFreeSpins=true;
+freeSpinsTotal=totalSpins;
+freeSpinsTotalWin=0;
+showFreeSpinsHUD();
+startFloodVideo();
+updateFreeSpinsHUD(0,totalSpins);
+}
+
+// End free spins mode - called when fsr hits 0
+async function endFreeSpinsMode(){
+console.log('%c 🏁 ENDING FREE SPINS MODE','background:red;color:white;font-size:16px;padding:4px','Total Won: $'+freeSpinsTotalWin.toFixed(2));
+inFreeSpins=false;
+hideFreeSpinsHUD();
+stopFloodVideo();
+await new Promise(r=>setTimeout(r,1000));
+await showFreeSpinsSummary();
+// Big win check on total winnings (20x bet threshold)
+const totalBet=TOTAL_BETS[S.betIdx];
+console.log('Checking for big win: Total=$'+freeSpinsTotalWin.toFixed(2)+' Threshold (20x bet)=$'+(20*totalBet).toFixed(2));
+if(freeSpinsTotalWin>=20*totalBet){
+console.log('🎉 BIG WIN! Playing big win overlay...');
+await playBigWin(freeSpinsTotalWin);
+}
+freeSpinsTotalWin=0;
+freeSpinsTotal=0;
+console.log('✅ Free spins mode ended, variables reset');
+}
+
+async function playBigWin(amount){
+const overlay=document.getElementById('bigwin-overlay');
+const vid=document.getElementById('bigwin-video');
+const amtEl=document.getElementById('bigwin-amount');
+if(!overlay||!vid)return;
+if(amtEl)amtEl.textContent='$'+amount.toFixed(2);
+overlay.classList.remove('hidden');
+vid.muted=!S.sound;
+vid.src='assets/bigwin.mp4';
+return new Promise(resolve=>{
+vid.addEventListener('loadedmetadata',()=>{vid.play().catch(()=>{});},{once:true});
+vid.addEventListener('error',()=>{overlay.classList.add('hidden');resolve();},{once:true});
+vid.addEventListener('ended',()=>{overlay.classList.add('hidden');resolve();},{once:true});
+overlay.addEventListener('click',()=>{vid.pause();overlay.classList.add('hidden');resolve();},{once:true});
+setTimeout(()=>{if(!overlay.classList.contains('hidden')){vid.pause();overlay.classList.add('hidden');resolve();}},8000);
+});
+}
+
+// Free spins state
+// API uses: fsr = free spins remaining, fsn = free spin number (1-indexed)
+// When fsn=0 and fsr>0: free spins just triggered
+// When fsn>0 and fsr>0: currently in free spin #fsn, fsr remaining after this
+// When fsr=0: free spins ended (or not in free spins)
+let inFreeSpins=false;
+let freeSpinsTotal=0;
+let freeSpinsTotalWin=0;
+let floodVideoElement=null;
+
+function showFreeSpinsPopup(numSpins){
+return new Promise(resolve=>{
+const popup=document.getElementById('fs-popup');
+const countEl=document.getElementById('fs-count');
+const startBtn=document.getElementById('fs-start-btn');
+if(!popup)return resolve();
+countEl.textContent=numSpins;
+popup.classList.remove('hidden');
+const handler=()=>{
+popup.classList.add('hidden');
+startBtn.removeEventListener('click',handler);
+resolve();
+};
+startBtn.addEventListener('click',handler);
+});
+}
+
+function showFreeSpinsHUD(){
+const hud=document.getElementById('fs-hud');
+if(hud)hud.classList.remove('hidden');
+}
+
+function hideFreeSpinsHUD(){
+const hud=document.getElementById('fs-hud');
+if(hud)hud.classList.add('hidden');
+}
+
+function updateFreeSpinsHUD(fsn,fsr){
+const remaining=document.getElementById('fs-hud-remaining');
+const total=document.getElementById('fs-hud-total');
+// fsn is current spin number (1-indexed), total = fsn + fsr
+const currentSpin=fsn||0;
+const totalSpins=freeSpinsTotal;
+if(remaining)remaining.textContent=currentSpin+' of '+totalSpins;
+if(total)total.textContent='$'+freeSpinsTotalWin.toFixed(2);
+}
+
+function showFreeSpinsSummary(){
+console.log('%c 📊 SHOWING FREE SPINS SUMMARY','background:green;color:white;font-size:16px;padding:4px','Total Won: $'+freeSpinsTotalWin.toFixed(2));
+return new Promise(resolve=>{
+const popup=document.getElementById('fs-summary');
+const totalEl=document.getElementById('fs-summary-total');
+const btn=document.getElementById('fs-summary-btn');
+if(!popup){
+console.error('❌ fs-summary element not found!');
+return resolve();
+}
+if(totalEl)totalEl.textContent='$'+freeSpinsTotalWin.toFixed(2);
+popup.classList.remove('hidden');
+console.log('✅ Summary popup displayed, waiting for user to click COLLECT');
+const handler=()=>{
+popup.classList.add('hidden');
+btn.removeEventListener('click',handler);
+console.log('✅ User clicked COLLECT, closing summary');
+resolve();
+};
+btn.addEventListener('click',handler);
+});
+}
+
+function startFloodVideo(){
+console.log('🌊 Starting flood video...');
+// Seamless transition: if bubbles are playing, fade them out as flood starts
+if(isBubbleVideoPlaying()){
+console.log('🫧 → 🌊 Transitioning from bubbles to flood...');
+stopBubbleVideo(true); // Fade out bubbles
+}
+// Start flood video in background (non-blocking, loops)
+const wrapper=document.querySelector('.reel-wrapper');
+if(!wrapper)return;
+// Remove old one if exists
+if(floodVideoElement){
+floodVideoElement.remove();
+floodVideoElement=null;
+}
+const vid=document.createElement('video');
+vid.id='liquid-canvas';
+vid.playsInline=true;
+vid.loop=true;
+vid.muted=!S.sound;
+vid.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%;z-index:19;pointer-events:none;object-fit:cover;mix-blend-mode:screen;opacity:0.9;filter:sepia(20%);';
+wrapper.appendChild(vid);
+vid.src='assets/liquid_small.mp4';
+vid.play().catch(()=>{});
+floodVideoElement=vid;
+}
+
+function stopFloodVideo(){
+if(floodVideoElement){
+floodVideoElement.style.transition='opacity 0.8s';
+floodVideoElement.style.opacity='0';
+setTimeout(()=>{
+if(floodVideoElement){
+floodVideoElement.remove();
+floodVideoElement=null;
+}
+},900);
+}
+}
+
+let randomizeTimeoutId=null;
+
+function showWin(amount){
+document.getElementById('win-amount').textContent='$'+amount.toFixed(2);
+document.getElementById('win-display').classList.remove('hidden');
+playSound('win-sound');
+setTimeout(()=>{document.getElementById('win-display').classList.add('hidden')},3000);
+}
+
+function highlightWinners(wins){
+document.querySelectorAll('.winner-cell').forEach(c=>c.classList.remove('winner-cell'));
+const windows=document.querySelectorAll('.reel-window');
+if(wins&&wins.length>0){
+wins.forEach(w=>{
+if(w.xy&&w.xy.length>0){
+w.xy.forEach(coord=>{
+const col=coord[0]-1;
+const row=coord[1]-1;
+if(windows[col]){
+const cells=windows[col].querySelectorAll('.reel-cell');
+if(cells[row])cells[row].classList.add('winner-cell');
+}});}});}
+}
+
+let winAnimId=0,winAnimTimer=null;
+
+function clearWinLines(){
+winAnimId++;
+if(winAnimTimer){clearTimeout(winAnimTimer);winAnimTimer=null}
+const el=document.getElementById('win-lines-svg');if(el)el.remove();
+}
+
+function getCellCenter(reelsEl,rr,col,row){
+// Fixed: Calculate logical grid positions instead of using transformed DOM positions
+// Cell dimensions from CSS
+const CELL_WIDTH = 169;
+const CELL_HEIGHT = 169;
+const CELL_GAP = 8; // gap between cells in a column
+const REEL_GAP = 12; // gap-3 in Tailwind = 12px between reels
+const PIPE_WIDTH = 50; // pipe divider width between reel 4 and 5
+
+// Calculate X position based on column
+let x = 0;
+for(let c = 0; c < col; c++){
+x += CELL_WIDTH;
+if(c < 4) x += REEL_GAP; // gap between reels 1-4
+if(c === 3) x += PIPE_WIDTH; // pipe divider after reel 4
+}
+x += CELL_WIDTH / 2; // center of cell
+
+// Calculate Y position based on row (simple: row index × (cell height + gap))
+const y = (row * (CELL_HEIGHT + CELL_GAP)) + (CELL_HEIGHT / 2);
+
+console.log('getCellCenter: col='+col+' row='+row+' -> x='+x+' y='+y);
+return {x: x, y: y};
+}
+
+function buildWinSVG(wins,reelsEl,rr,showIndices){
+console.log('buildWinSVG called - showIndices:', showIndices, 'rect:', rr);
+const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+svg.id='win-lines-svg';
+svg.setAttribute('width',rr.width);
+svg.setAttribute('height',rr.height);
+svg.style.cssText='position:absolute;top:0;left:0;pointer-events:none;z-index:15;';
+let any=false;
+wins.forEach((w,idx)=>{
+if(showIndices&&!showIndices.includes(idx))return;
+if(!w.li||w.li<=0){
+console.log('buildWinSVG: Win',idx,'has no valid line index');
+return;
+}
+const li=w.li-1;
+const pl=PAYLINES[li];
+if(!pl){
+console.log('buildWinSVG: No payline found for line',li);
+return;
+}
+const num=w.num||0;
+if(num<2){
+console.log('buildWinSVG: Win',idx,'has num<2:',num);
+return;
+}
+console.log('buildWinSVG: Drawing win',idx,'- line:',w.li,'num:',num,'xy:',w.xy);
+const pts=[];
+for(let c=0;c<num&&c<4;c++){
+const p=getCellCenter(reelsEl,rr,c,pl[c]-1);
+if(p)pts.push(p.x+','+p.y);
+}
+// Extend line to reel 5 jug
+const p5=getCellCenter(reelsEl,rr,4,pl[4]-1);
+if(p5)pts.push(p5.x+','+p5.y);
+console.log('buildWinSVG: Points for win',idx,':',pts);
+if(pts.length>=2){
+any=true;
+const line=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+line.setAttribute('points',pts.join(' '));
+line.setAttribute('stroke',LINE_COLORS[li%LINE_COLORS.length]);
+line.setAttribute('stroke-width','5');
+line.setAttribute('fill','none');
+line.setAttribute('stroke-linecap','round');
+line.setAttribute('stroke-linejoin','round');
+line.setAttribute('opacity','0.85');
+line.setAttribute('filter','drop-shadow(0 0 6px '+LINE_COLORS[li%LINE_COLORS.length]+')');
+svg.appendChild(line);
+console.log('buildWinSVG: Line added to SVG');
+}else{
+console.log('buildWinSVG: Not enough points to draw line');
+}
+});
+return any?svg:null;
+}
+
+function drawWinLines(wins){
+console.log('drawWinLines called with:', wins);
+clearWinLines();
+if(!wins||!wins.length){
+console.log('drawWinLines: No wins array, exiting');
+return;
+}
+const lined=[];
+wins.forEach((w,i)=>{if(w.li&&w.li>0&&(w.num||0)>=2)lined.push(i)});
+console.log('drawWinLines: Valid lined wins:', lined);
+if(!lined.length){
+console.log('drawWinLines: No valid lined wins, exiting');
+return;
+}
+const myId=winAnimId;
+const reelsEl=document.getElementById('reels');
+console.log('drawWinLines: Starting cycle animation');
+function cycle(step){
+if(winAnimId!==myId)return;
+const old=document.getElementById('win-lines-svg');if(old)old.remove();
+const rr=reelsEl.getBoundingClientRect();
+console.log('cycle step:', step, 'rect:', rr);
+if(step<lined.length){
+const svg=buildWinSVG(wins,reelsEl,rr,[lined[step]]);
+if(svg){
+console.log('Appending SVG for line index:', lined[step]);
+reelsEl.appendChild(svg);
+}else{
+console.log('No SVG created for line index:', lined[step]);
+}
+winAnimTimer=setTimeout(()=>cycle(step+1),1000);
+}else{
+const svg=buildWinSVG(wins,reelsEl,rr,lined);
+if(svg){
+console.log('Appending SVG for all lines:', lined);
+reelsEl.appendChild(svg);
+}else{
+console.log('No SVG created for all lines');
+}
+winAnimTimer=setTimeout(()=>cycle(0),2000);
+}
+}
+cycle(0);
+}
+
+function createCell(sym,col){
+const cell=document.createElement('div');
+cell.className='reel-cell p-2';
+const symbolDiv=document.createElement('div');
+symbolDiv.className='symbol-img';
+// Use background-image instead of img.src to prevent flicker
+// During free spins, use mult2 as fallback (no 1x jugs!)
+const defaultMult=inFreeSpins?'assets/symbols/mult2.webp':'assets/symbols/mult1.webp';
+let imgUrl;
+if(col===4){
+imgUrl=SYM5[sym]||defaultMult;
+}else{
+if(sym<1||sym>SYMCOUNT)sym=((sym-1)%SYMCOUNT)+1;
+imgUrl=SYM[sym];
+}
+symbolDiv.style.backgroundImage='url('+imgUrl+')';
+cell.appendChild(symbolDiv);
+return cell;
+}
+
+async function initGame(){
+await preloadImages();
+const r=await api('/game/new',{cid:1,uid:3,alias:'Novomatic/Secret Elixir'});
+if(r&&r.gid){
+S.gid=r.gid;
+S.bal=r.wallet||1000;
+S.scr=r.scr||(r.game&&r.game.scr);
+}
+render();
+updateUI();
+}
+
+function createPipeDivider(){
+const d=document.createElement('div');
+d.className='pipe-divider';
+const img=document.createElement('img');
+img.src='assets/pipe.webp';
+img.alt='';
+d.appendChild(img);
+return d;
+}
+
+function updatePlank(){
+const container=document.querySelector('.reels-container');
+const pipe=document.querySelector('.pipe-divider');
+if(!container||!pipe)return;
+let plank=document.getElementById('plank-bg');
+if(!plank){
+plank=document.createElement('div');
+plank.id='plank-bg';
+container.insertBefore(plank,container.firstChild);
+}
+const cr=container.getBoundingClientRect();
+const pr=pipe.getBoundingClientRect();
+plank.style.left=(pr.left-cr.left)+'px';
+}
+
+function render(){
+const c=document.getElementById('reels');
+c.innerHTML='';
+if(!S.scr)return;
+
+const CELL=177;
+const ROWS=3;
+const VISIBLE_START=50; // Cells 50-52 will be visible
+const REST_OFFSET=VISIBLE_START*CELL;
+
+for(let col=0;col<S.scr.length;col++){
+if(col===4)c.appendChild(createPipeDivider());
+const win=document.createElement('div');
+win.className='reel-window'+(col===4?' reel5':'');
+const clipper=document.createElement('div');
+clipper.className='reel-clipper';
+const strip=document.createElement('div');
+strip.className='reel-strip';
+
+// Build strip: 53 cells total
+// Cells 0-2: Same as current screen (will be destination after spin)
+// Cells 3-49: Random filler
+// Cells 50-52: Current screen (VISIBLE at rest)
+for(let i=0;i<MAX_STRIP;i++){
+let sym;
+if(i<ROWS){
+// Cells 0-2: current screen (destination)
+sym=S.scr[col][i];
+}else if(i>=VISIBLE_START&&i<VISIBLE_START+ROWS){
+// Cells 50-52: current screen (visible at rest)
+sym=S.scr[col][i-VISIBLE_START];
+}else{
+// Random filler
+if(col===4){
+sym=REEL5_VALS[Math.floor(Math.random()*REEL5_VALS.length)];
+}else{
+sym=Math.floor(Math.random()*SYMCOUNT)+1;
+}
+}
+strip.appendChild(createCell(sym,col));
+}
+
+// Position strip to show cells 50-52 (current symbols)
+strip.style.transform='translateY(-'+REST_OFFSET+'px)';
+
+clipper.appendChild(strip);
+win.appendChild(clipper);
+c.appendChild(win);
+}
+requestAnimationFrame(()=>updatePlank());
+}
+
+async function spin(){
+if(S.spinning)return;
+S.spinning=true;
+document.getElementById('spin-btn').disabled=true;
+document.getElementById('last-win').textContent='0.00';
+document.getElementById('last-win').className='stat-value win-val';
+document.getElementById('win-display').classList.add('hidden');
+document.querySelectorAll('.winner-cell').forEach(c=>c.classList.remove('winner-cell'));
+clearWinLines();
+// Only remove flood video if NOT in free spins (it should persist during free spins)
+if(!inFreeSpins){
+const oldLiquid=document.getElementById('liquid-canvas');
+if(oldLiquid)oldLiquid.remove();
+}
+
+playSound('spin-sound');
+
+const CELL=177;
+const ROWS=3;
+const VISIBLE_START=50; // Cells 50-52 are visible at rest
+const REST_OFFSET=VISIBLE_START*CELL;
+
+const windows=document.querySelectorAll('.reel-window');
+
+// ============================================
+// STEP 1: GET SPIN RESULT FIRST
+// ============================================
+let win=0,wins=[],fsr=0,fsn=0;
+try{
+const r=await api('/slot/spin',{gid:S.gid,bet:perLineBet(),sel:LINES});
+console.log('%c === RAW API RESPONSE ===','background:navy;color:white');
+console.log('Full response:',JSON.stringify(r,null,2));
+console.log('r.game:',r.game);
+console.log('r.gain:',r.gain);
+console.log('r.game?.gain:',r.game?.gain);
+console.log('r.wins:',r.wins);
+console.log('r.game?.wins:',r.game?.wins);
+if(r){
+S.scr=r.scr||(r.game&&r.game.scr);
+if(r.wallet!==undefined)S.bal=r.wallet;
+win=r.gain||(r.game&&r.game.gain)||0;
+wins=r.wins||(r.game&&r.game.wins)||[];
+// Free spins fields from API
+fsr=r.game?.fsr||r.fsr||0;
+fsn=r.game?.fsn||r.fsn||0;
+console.log('%c Parsed Values','background:teal;color:white');
+console.log('gain:',win,'wins.length:',wins?wins.length:0,'fsr:',fsr,'fsn:',fsn);
+}
+}catch(err){console.log(err)}
+
+// ============================================
+// STEP 2: SET UP STRIP (only change OFF-SCREEN cells)
+// ============================================
+// Strip structure:
+// - Cells 0-2: FINAL result (off-screen at top, will scroll INTO view)
+// - Cells 3-49: Random filler (off-screen, will scroll through)
+// - Cells 50-52: CURRENT symbols (visible now, will scroll OUT)
+//
+// Animation: translateY goes from -REST_OFFSET to 0
+// This makes strip move DOWN, content scrolls UP
+
+// During free spins, use mult2 as fallback (no 1x jugs!)
+const defaultMultStep2=inFreeSpins?'assets/symbols/mult2.webp':'assets/symbols/mult1.webp';
+
+windows.forEach((w,col)=>{
+const strip=w.querySelector('.reel-strip');
+const cells=strip.querySelectorAll('.symbol-img');
+
+// Set cells 0-2 to FINAL result (currently OFF-SCREEN at top)
+if(S.scr&&S.scr[col]){
+for(let i=0;i<ROWS;i++){
+const sym=S.scr[col][i];
+let url;
+if(col===4){
+url=SYM5[sym]||defaultMultStep2;
+}
+else{
+let s=sym;
+if(s<1||s>SYMCOUNT)s=((s-1)%SYMCOUNT)+1;
+url=SYM[s];
+}
+cells[i].style.backgroundImage='url('+url+')';
+}
+}
+
+// Set cells 3-49 to random filler (OFF-SCREEN)
+// Use different reel 5 values during free spins (no 1x!)
+const reel5Vals=inFreeSpins?REEL5_FS_VALS:REEL5_VALS;
+const defaultMult=inFreeSpins?'assets/symbols/mult2.webp':'assets/symbols/mult1.webp';
+for(let i=ROWS;i<VISIBLE_START;i++){
+let url;
+if(col===4){
+const randVal=reel5Vals[Math.floor(Math.random()*reel5Vals.length)];
+url=SYM5[randVal]||defaultMult;
+}else{
+url=SYM[Math.floor(Math.random()*SYMCOUNT)+1];
+}
+cells[i].style.backgroundImage='url('+url+')';
+}
+
+// DO NOT touch cells 50-52 - they show CURRENT symbols and are VISIBLE
+});
+
+// ============================================
+// STEP 3: ANIMATE - Scroll from REST_OFFSET to 0
+// ============================================
+// Current symbols (cells 50-52) scroll UP and off screen
+// Final symbols (cells 0-2) scroll UP into view
+await new Promise(resolve=>{
+const t0=performance.now();
+const done=new Array(windows.length).fill(false);
+let anticipationTriggered=false;
+
+function tick(now){
+const elapsed=now-t0;
+let allDone=true;
+
+// Check for scatter anticipation when reel 2 (col 1) finishes
+// NOTE: Anticipation works in BOTH regular spins AND free spins!
+if(!anticipationTriggered&&done[1]){
+let scatterCount=0;
+for(let c=0;c<=1&&c<4;c++){
+if(S.scr&&S.scr[c]){
+for(let r=0;r<3;r++){
+if(S.scr[c][r]===SCATTER_ID)scatterCount++;
+}
+}
+}
+if(scatterCount>=2){
+anticipationTriggered=true;
+console.log('%c 🔥 2 SCATTERS! ANTICIPATION!','background:red;color:yellow;font-size:16px;padding:4px','(Free Spins:',inFreeSpins+')');
+// Trigger full anticipation effects
+triggerAnticipation();
+// Highlight scatters that landed
+highlightScatters();
+// Add glow effect to remaining reels
+for(let c=2;c<4;c++){
+if(!done[c])windows[c].classList.add('reel-anticipation');
+}
+}
+}
+
+for(let col=0;col<windows.length;col++){
+if(done[col])continue;
+
+const delay=col*150;
+// Slow down dramatically if anticipation triggered and this is reel 3 or 4
+let duration=1200+col*180;
+if(anticipationTriggered&&col>=2&&col<4){
+duration+=2000; // Add 2 seconds to build tension
+}
+const t=elapsed-delay;
+
+if(t<0){allDone=false;continue;}
+
+const progress=Math.min(t/duration,1);
+const eased=1-Math.pow(1-progress,3);
+// Animate from -REST_OFFSET toward 0
+const offset=Math.round(REST_OFFSET*(1-eased));
+
+const strip=windows[col].querySelector('.reel-strip');
+strip.style.transform='translateY(-'+offset+'px)';
+
+if(progress>=1){
+done[col]=true;
+strip.style.transform='translateY(0)';
+// Remove anticipation effect when reel stops
+windows[col].classList.remove('reel-anticipation');
+}else{
+allDone=false;
+}
+}
+
+if(allDone){
+// Check if anticipation was triggered and count final scatters
+if(anticipationTriggered){
+let finalScatterCount=0;
+for(let c=0;c<4;c++){
+if(S.scr&&S.scr[c]){
+for(let r=0;r<3;r++){
+if(S.scr[c][r]===SCATTER_ID)finalScatterCount++;
+}
+}
+}
+const success=finalScatterCount>=3;
+endAnticipation(success);
+if(success){
+console.log('%c 🎰 3 SCATTERS! FREE SPINS TRIGGERED! 🎰','background:gold;color:black;font-size:20px;padding:8px');
+}
+}
+resolve();
+}
+else{requestAnimationFrame(tick);}
+}
+requestAnimationFrame(tick);
+});
+
+// ============================================
+// STEP 4: RESET FOR NEXT SPIN
+// ============================================
+// Copy final result to cells 50-52 (so they're ready as "current" for next spin)
+// Then reset strip position to REST_OFFSET
+const defaultMultReset=inFreeSpins?'assets/symbols/mult2.webp':'assets/symbols/mult1.webp';
+windows.forEach((w,col)=>{
+const strip=w.querySelector('.reel-strip');
+const cells=strip.querySelectorAll('.symbol-img');
+
+// Copy cells 0-2 to cells 50-52
+if(S.scr&&S.scr[col]){
+for(let i=0;i<ROWS;i++){
+const sym=S.scr[col][i];
+let url;
+if(col===4){url=SYM5[sym]||defaultMultReset;}
+else{
+let s=sym;
+if(s<1||s>SYMCOUNT)s=((s-1)%SYMCOUNT)+1;
+url=SYM[s];
+}
+cells[VISIBLE_START+i].style.backgroundImage='url('+url+')';
+}
+}
+
+// Reset strip to starting position (showing cells 50-52)
+strip.style.transform='translateY(-'+REST_OFFSET+'px)';
+});
+
+updateUI();
+
+// Handle wins
+// Only show win if there are actual win combinations (wins array has items)
+const hasLineWins=wins&&wins.length>0;
+
+if(win>0&&hasLineWins){
+// Regular line wins - show win display, draw lines, etc.
+console.log('%c 💰 WIN!','background:gold;color:black','$'+win.toFixed(2),'wins:',wins);
+document.getElementById('last-win').textContent=win.toFixed(2);
+document.getElementById('last-win').className='stat-value win-active';
+highlightWinners(wins);
+console.log('%c Drawing win lines...','background:cyan;color:black');
+drawWinLines(wins);
+showWin(win);
+// Track total win during free spins
+if(inFreeSpins){
+freeSpinsTotalWin+=win;
+console.log('%c FS Total Win:','background:green;color:white','$'+freeSpinsTotalWin.toFixed(2));
+}
+// Big win overlay for 20x+ bet wins (NOT during free spins - save for end)
+const totalBet=TOTAL_BETS[S.betIdx];
+if(win>=20*totalBet&&!inFreeSpins){
+await playBigWin(win);
+}
+}else if(win>0&&!hasLineWins){
+// Gain without line wins - this could be scatter payout or bet return
+// Only log it, don't show as a win display
+console.log('%c ⚠️ Gain without line wins:','background:gray;color:white','$'+win.toFixed(2),'(could be scatter bonus, bet return, or rounding)');
+// Note: Scatter payout happens when free spins TRIGGER, not during each free spin
+// During free spins, we should NOT be getting gain without wins unless it's a bug
+if(inFreeSpins){
+console.warn('Unexpected: Gain during free spin without line wins. Investigate API response.');
+}
+// Don't show win display, win lines, or winner highlights
+// Don't add to free spins total (only line wins count)
+}
+
+// ============================================
+// FREE SPINS LOGIC (based on API fsr/fsn)
+// ============================================
+// fsr = free spins remaining AFTER this spin
+// fsn = current free spin number (1-indexed), 0 if not in free spins yet
+
+console.log('%c FREE SPINS CHECK','background:purple;color:white','fsr:',fsr,'fsn:',fsn,'inFreeSpins:',inFreeSpins);
+
+// Verify reel 5 multipliers during free spins
+if(inFreeSpins&&S.scr&&S.scr[4]){
+console.log('%c REEL 5 (should be 2x-20x):','background:orange;color:white',JSON.stringify(S.scr[4]));
+const has1x=S.scr[4].some(m=>m===1);
+if(has1x){
+console.error('❌ ERROR: Found 1x multiplier during free spins!');
+}
+}
+
+// Case 1: Free spins just triggered (fsr > 0, not yet in free spins mode)
+if(fsr>0&&!inFreeSpins){
+// Calculate total free spins (fsn will be 0 or 1, fsr is remaining)
+const totalFs=fsn+fsr;
+console.log('%c 🎰 FREE SPINS TRIGGERED! 🎰','background:green;color:white;font-size:16px;padding:4px','Total:',totalFs);
+await showFreeSpinsPopup(totalFs);
+await startFreeSpinsMode(totalFs);
+// Auto-spin: continue spinning
+S.spinning=false;
+await new Promise(r=>setTimeout(r,1500));
+spin();
+return;
+}
+
+// Case 2: Currently in free spins, more spins remaining
+if(inFreeSpins&&fsr>0){
+console.log('%c 🎰 FREE SPIN','background:blue;color:white','#'+fsn,'Remaining:',fsr,'Win:','$'+win.toFixed(2),'Total:','$'+freeSpinsTotalWin.toFixed(2));
+// Update HUD with current spin number
+updateFreeSpinsHUD(fsn,fsr);
+// Auto-spin: continue spinning
+S.spinning=false;
+await new Promise(r=>setTimeout(r,2000));
+spin();
+return;
+}
+
+// Case 3: Free spins just ended (was in free spins, now fsr=0)
+if(inFreeSpins&&fsr===0){
+console.log('%c ✅ FREE SPINS COMPLETE','background:green;color:white;font-size:16px;padding:4px','Total Won:','$'+freeSpinsTotalWin.toFixed(2));
+updateFreeSpinsHUD(fsn,0);
+await new Promise(r=>setTimeout(r,1000));
+await endFreeSpinsMode();
+}
+
+S.spinning=false;
+document.getElementById('spin-btn').disabled=false;
+}
+
+function updateUI(){
+document.getElementById('balance').textContent=S.bal.toFixed(2);
+document.getElementById('bet-display').textContent=TOTAL_BETS[S.betIdx].toFixed(2);
+}
+
+function changeBet(d){
+S.betIdx=Math.max(0,Math.min(TOTAL_BETS.length-1,S.betIdx+d));
+updateUI();
+}
+
+document.getElementById('bet-down').addEventListener('click',()=>changeBet(-1));
+document.getElementById('bet-up').addEventListener('click',()=>changeBet(1));
+document.getElementById('spin-btn').addEventListener('click',()=>spin());
+document.getElementById('sound-btn').addEventListener('click',()=>toggleSound());
+document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();spin()}});
+// Test helpers
+// testRealFreeSpins(maxAttempts) - Auto-spin until REAL server-side free spins trigger
+// testFreeSpins(numSpins) - Simulate free spins client-side (fake mode, for UI testing only)
+// testAnticipation() - Test 2-scatter anticipation effect
+// testAnticipation3() - Test 3-scatter anticipation -> free spins trigger
+// testBubbles() - Test bubble video anticipation effect
+// testParticles() - Test particle system standalone
+// checkScatters() - Count scatters on current screen
+// logState() - Log current free spins state
+// testFlood() - Test flood video animation
+// testBigWin() - Test big win overlay
+// testFsPopup() - Test free spins popup
+// testFsHUD() - Test free spins HUD
+// testFsSummary() - Test free spins summary
+// testFsEnd() - Test free spins end sequence
+
+window.testParticles=async()=>{
+console.log('%c === TESTING PARTICLE SYSTEM ===','background:blue;color:white;font-size:16px;padding:4px');
+const ps = getParticleSystem();
+if(!ps){console.error('Particle system not available');return;}
+ps.start();
+
+// Demo 1: Continuous sparks from two points
+console.log('Demo 1: Continuous spark emitters (5 seconds)');
+ps.addEmitter(window.innerWidth * 0.3, window.innerHeight * 0.5, 10);
+ps.addEmitter(window.innerWidth * 0.7, window.innerHeight * 0.5, 10);
+await new Promise(r=>setTimeout(r,5000));
+ps.clearEmitters();
+
+// Demo 2: Different particle types
+console.log('Demo 2: Different particle types');
+const centerX = window.innerWidth / 2;
+const centerY = window.innerHeight / 2;
+for(let i=0;i<20;i++){
+ps.addSpark(centerX - 100, centerY);
+ps.addEmber(centerX, centerY);
+ps.addFire(centerX + 100, centerY);
+}
+await new Promise(r=>setTimeout(r,2000));
+
+// Demo 3: Big pop sparks
+console.log('Demo 3: Big pop sparks');
+for(let i=0;i<10;i++){
+setTimeout(()=>{
+ps.addSpark(
+Math.random() * window.innerWidth,
+Math.random() * window.innerHeight,
+{ size: 10, vx: (Math.random()-0.5)*8, vy: -Math.random()*10-5 }
+);
+},i*200);
+}
+await new Promise(r=>setTimeout(r,3000));
+
+// Demo 4: Explosion
+console.log('Demo 4: Explosion!');
+ps.explode(centerX, centerY, 150);
+await new Promise(r=>setTimeout(r,1000));
+ps.explode(centerX - 100, centerY, 50);
+ps.explode(centerX + 100, centerY, 50);
+await new Promise(r=>setTimeout(r,3000));
+
+// Stop
+ps.stop();
+console.log('✅ Particle system test complete');
+};
+
+window.testBubbles=async()=>{
+console.log('%c === TESTING BUBBLE VIDEO ===','background:cyan;color:black;font-size:16px;padding:4px');
+console.log('✅ Bubbles should be clearly visible while keeping symbols readable');
+console.log('Starting bubble video over reels...');
+startBubbleVideo();
+console.log('Bubbles playing for 8 seconds...');
+console.log('');
+console.log('📍 Bubble settings (BALANCED):');
+console.log('   - Opacity: 0.55 (subtle bubbles, clear symbols)');
+console.log('   - Gradient mask: 50% center, 75% mid, 100% edges');
+console.log('   - Mix-blend-mode: screen (black transparent)');
+console.log('   - Filter: brightness(1.3) contrast(1.3) for visibility');
+console.log('');
+console.log('🔍 Check: Can you see BOTH bubbles AND symbols clearly?');
+await new Promise(r=>setTimeout(r,8000));
+console.log('');
+console.log('Fading out bubbles...');
+stopBubbleVideo(true);
+await new Promise(r=>setTimeout(r,1000));
+console.log('✅ Bubble video test complete');
+console.log('');
+console.log('💡 TIP: During gameplay, bubbles appear when 2 scatters land,');
+console.log('   then seamlessly transition to flood video if 3rd scatter lands!');
+};
+
+window.testAnticipation=async()=>{
+if(S.spinning){console.log('❌ Cannot test - already spinning');return;}
+console.log('%c === TESTING 2-SCATTER ANTICIPATION ===','background:purple;color:white;font-size:16px;padding:4px');
+// Place 2 scatters on reels 1 and 2
+if(!S.scr)S.scr=[[1,2,3],[4,5,6],[7,8,9],[10,11,12],[1,2,3]];
+S.scr[0]=[SCATTER_ID,3,5];
+S.scr[1]=[7,SCATTER_ID,9];
+S.scr[2]=[4,6,8];
+S.scr[3]=[3,5,7];
+render();
+await new Promise(r=>setTimeout(r,500));
+// Trigger anticipation effects
+triggerAnticipation();
+highlightScatters();
+const windows=document.querySelectorAll('.reel-window');
+windows[2].classList.add('reel-anticipation');
+windows[3].classList.add('reel-anticipation');
+console.log('Anticipation triggered! Waiting 3.5 seconds...');
+// Wait for anticipation to play out
+await new Promise(r=>setTimeout(r,3500));
+// End anticipation (no 3rd scatter)
+endAnticipation(false);
+console.log('✅ Anticipation test complete (2 scatters only)');
+};
+
+window.testAnticipation3=async()=>{
+if(S.spinning){console.log('❌ Cannot test - already spinning');return;}
+console.log('%c === TESTING 3-SCATTER ANTICIPATION -> FREE SPINS ===','background:gold;color:black;font-size:16px;padding:4px');
+// Place 3 scatters on reels 1, 2, and 3
+if(!S.scr)S.scr=[[1,2,3],[4,5,6],[7,8,9],[10,11,12],[1,2,3]];
+S.scr[0]=[SCATTER_ID,3,5];
+S.scr[1]=[7,SCATTER_ID,9];
+S.scr[2]=[4,SCATTER_ID,8];
+S.scr[3]=[3,5,7];
+render();
+await new Promise(r=>setTimeout(r,500));
+// Trigger anticipation effects
+triggerAnticipation();
+highlightScatters();
+const windows=document.querySelectorAll('.reel-window');
+windows[2].classList.add('reel-anticipation');
+windows[3].classList.add('reel-anticipation');
+console.log('Anticipation triggered! Waiting 3.5 seconds...');
+// Wait for anticipation to play out
+await new Promise(r=>setTimeout(r,3500));
+// End anticipation with success (3 scatters!)
+endAnticipation(true);
+console.log('🎉 3 SCATTERS LANDED!');
+// Wait for explosion animation
+await new Promise(r=>setTimeout(r,1500));
+// Show free spins popup
+await showFreeSpinsPopup(12);
+console.log('✅ Anticipation test complete (triggered free spins)');
+};
+
+window.checkScatters=()=>{
+if(!S.scr){console.log('No screen data');return 0;}
+let count=0;
+for(let col=0;col<4;col++){
+if(S.scr[col]){
+for(let row=0;row<3;row++){
+if(S.scr[col][row]===SCATTER_ID){
+count++;
+console.log('Scatter at col',col+1,'row',row+1);
+}
+}
+}
+}
+console.log('Total scatters:',count);
+return count;
+};
+window.testFlood=()=>{startFloodVideo();setTimeout(stopFloodVideo,5000)};
+window.testBigWin=()=>playBigWin(100);
+window.testFsPopup=()=>showFreeSpinsPopup(12);
+window.testFsHUD=()=>{freeSpinsTotal=12;showFreeSpinsHUD();updateFreeSpinsHUD(5,7)};
+window.testFsSummary=()=>{freeSpinsTotalWin=42.50;showFreeSpinsSummary()};
+window.testFsEnd=async()=>{freeSpinsTotalWin=150;inFreeSpins=true;await endFreeSpinsMode()};
+window.logState=()=>console.log('inFreeSpins:',inFreeSpins,'freeSpinsTotal:',freeSpinsTotal,'freeSpinsTotalWin:',freeSpinsTotalWin);
+
+// REAL free spins test - spins until scatters trigger free spins naturally
+window.testRealFreeSpins=async(maxAttempts=100)=>{
+if(S.spinning||inFreeSpins){
+console.log('❌ Cannot start test - already spinning or in free spins');
+return;
+}
+console.log('%c=== TESTING REAL FREE SPINS ===','background:blue;color:white;font-size:16px;padding:4px');
+console.log('Auto-spinning until 3+ scatters land naturally...');
+console.log('Max attempts:',maxAttempts);
+
+let attempts=0;
+while(attempts<maxAttempts){
+attempts++;
+console.log(`Attempt ${attempts}/${maxAttempts}...`);
+
+// Call the regular spin API
+try{
+const r=await api('/slot/spin',{gid:S.gid,bet:perLineBet(),sel:LINES});
+if(r){
+S.scr=r.scr||(r.game&&r.game.scr);
+if(r.wallet!==undefined)S.bal=r.wallet;
+const win=r.gain||(r.game&&r.game.gain)||0;
+const wins=r.wins||(r.game&&r.game.wins)||[];
+const fsr=r.game?.fsr||r.fsr||0;
+const fsn=r.game?.fsn||r.fsn||0;
+
+// Count scatters on reels 1-4
+let scatterCount=0;
+if(S.scr){
+for(let col=0;col<4;col++){
+if(S.scr[col]){
+for(let row=0;row<3;row++){
+if(S.scr[col][row]===SCATTER_ID)scatterCount++;
+}
+}
+}
+}
+
+console.log('Scatters:',scatterCount,'Win:','$'+win.toFixed(2),'fsr:',fsr,'fsn:',fsn);
+
+// Check if free spins triggered
+if(fsr>0&&fsn===0){
+console.log('%c🎉 FREE SPINS TRIGGERED! 🎉','background:green;color:white;font-size:18px;padding:8px');
+console.log('Total free spins:',fsr);
+console.log('Now the game will automatically play through them...');
+// Update the screen to show the scatter result
+render();
+updateUI();
+// Wait a moment so we can see the scatters
+await new Promise(r=>setTimeout(r,1000));
+// Now trigger a regular spin which will detect fsr>0 and start free spins mode
+await spin();
+return;
+}
+
+// Wait between attempts
+await new Promise(r=>setTimeout(r,500));
+}
+}catch(err){
+console.error('API error:',err);
+}
+}
+
+console.log('❌ Failed to trigger free spins after',maxAttempts,'attempts');
+console.log('Try again or increase maxAttempts');
+};
+
+// Full free spins test - simulates hitting 3 scatters
+// Note: Server doesn't know we're in free spins, so we override reel 5 values client-side
+let isTestFreeSpins=false;
+window.testFreeSpins=async(numSpins=12)=>{
+if(S.spinning||inFreeSpins){
+console.log('Cannot start test - already spinning or in free spins');
+return;
+}
+console.log('=== TESTING FREE SPINS MODE ===');
+console.log('Simulating '+numSpins+' free spins...');
+console.log('NOTE: Server is not in free spins - overriding reel 5 values client-side');
+isTestFreeSpins=true;
+// Show the popup
+await showFreeSpinsPopup(numSpins);
+// Start free spins mode (this sets up HUD, flood video, etc)
+await startFreeSpinsMode(numSpins);
+// Run the free spins loop
+await runTestFreeSpins(numSpins);
+isTestFreeSpins=false;
+};
+
+// Run test free spins (uses real API spins but overrides reel 5 values)
+async function runTestFreeSpins(totalSpins){
+const CELL=177;
+const ROWS=3;
+const VISIBLE_START=50;
+const REST_OFFSET=VISIBLE_START*CELL;
+
+for(let spinNum=1;spinNum<=totalSpins;spinNum++){
+// Update HUD at start of spin
+updateFreeSpinsHUD(spinNum,totalSpins-spinNum);
+// Wait between spins (except first)
+if(spinNum>1)await new Promise(r=>setTimeout(r,1500));
+// Clear previous win display
+document.getElementById('last-win').textContent='0.00';
+document.getElementById('last-win').className='stat-value win-val';
+document.querySelectorAll('.winner-cell').forEach(c=>c.classList.remove('winner-cell'));
+clearWinLines();
+playSound('spin-sound');
+const windows=document.querySelectorAll('.reel-window');
+// Get spin result from API
+let win=0,wins=[];
+try{
+const r=await api('/slot/spin',{gid:S.gid,bet:perLineBet(),sel:LINES});
+if(r){
+S.scr=r.scr||(r.game&&r.game.scr);
+if(r.wallet!==undefined)S.bal=r.wallet;
+win=r.gain||(r.game&&r.game.gain)||0;
+wins=r.wins||(r.game&&r.game.wins)||[];
+}
+}catch(err){console.log(err)}
+
+// OVERRIDE: Replace any 1x multipliers in reel 5 with free spins values
+// (Server doesn't know we're in free spins during test mode)
+if(S.scr&&S.scr[4]){
+console.log('API REEL 5 (before override): '+JSON.stringify(S.scr[4]));
+for(let i=0;i<S.scr[4].length;i++){
+if(S.scr[4][i]===1){
+const newVal=REEL5_FS_VALS[Math.floor(Math.random()*REEL5_FS_VALS.length)];
+console.log('Overriding reel 5 row '+i+': 1 -> '+newVal);
+S.scr[4][i]=newVal;
+}
+}
+console.log('%c REEL 5 (after override): '+JSON.stringify(S.scr[4]),'background:green;color:white');
+}
+
+// Set up strip
+windows.forEach((w,col)=>{
+const strip=w.querySelector('.reel-strip');
+const cells=strip.querySelectorAll('.symbol-img');
+// Set cells 0-2 to final result
+if(S.scr&&S.scr[col]){
+for(let i=0;i<ROWS;i++){
+const sym=S.scr[col][i];
+let url;
+if(col===4){
+url=SYM5[sym]||'assets/symbols/mult2.webp';
+}else{
+let s=sym;
+if(s<1||s>SYMCOUNT)s=((s-1)%SYMCOUNT)+1;
+url=SYM[s];
+}
+cells[i].style.backgroundImage='url('+url+')';
+}
+}
+// Random filler - use FREE SPINS multipliers (no 1x!)
+for(let i=ROWS;i<VISIBLE_START;i++){
+let url;
+if(col===4){
+const fsVal=REEL5_FS_VALS[Math.floor(Math.random()*REEL5_FS_VALS.length)];
+url=SYM5[fsVal]||'assets/symbols/mult2.webp';
+}else{
+url=SYM[Math.floor(Math.random()*SYMCOUNT)+1];
+}
+cells[i].style.backgroundImage='url('+url+')';
+}
+});
+// Animate reels
+await new Promise(resolve=>{
+const t0=performance.now();
+const done=new Array(windows.length).fill(false);
+function tick(now){
+const elapsed=now-t0;
+let allDone=true;
+for(let col=0;col<windows.length;col++){
+if(done[col])continue;
+const delay=col*150;
+const duration=1200+col*180;
+const t=elapsed-delay;
+if(t<0){allDone=false;continue;}
+const progress=Math.min(t/duration,1);
+const eased=1-Math.pow(1-progress,3);
+const offset=Math.round(REST_OFFSET*(1-eased));
+const strip=windows[col].querySelector('.reel-strip');
+strip.style.transform='translateY(-'+offset+'px)';
+if(progress>=1){
+done[col]=true;
+strip.style.transform='translateY(0)';
+}else{allDone=false;}
+}
+if(allDone){resolve();}
+else{requestAnimationFrame(tick);}
+}
+requestAnimationFrame(tick);
+});
+// Reset strips for next spin
+windows.forEach((w,col)=>{
+const strip=w.querySelector('.reel-strip');
+const cells=strip.querySelectorAll('.symbol-img');
+if(S.scr&&S.scr[col]){
+for(let i=0;i<ROWS;i++){
+const sym=S.scr[col][i];
+let url;
+if(col===4){url=SYM5[sym]||'assets/symbols/mult2.webp';}
+else{
+let s=sym;
+if(s<1||s>SYMCOUNT)s=((s-1)%SYMCOUNT)+1;
+url=SYM[s];
+}
+cells[VISIBLE_START+i].style.backgroundImage='url('+url+')';
+}
+}
+strip.style.transform='translateY(-'+REST_OFFSET+'px)';
+});
+updateUI();
+
+// Handle win - IMMEDIATELY after this spin completes
+if(win>0){
+freeSpinsTotalWin+=win;
+document.getElementById('last-win').textContent=win.toFixed(2);
+document.getElementById('last-win').className='stat-value win-active';
+highlightWinners(wins);
+// Draw win lines NOW for this spin
+console.log('%c DRAWING WIN LINES FOR SPIN '+spinNum,'background:blue;color:white;font-size:14px');
+drawWinLines(wins);
+showWin(win);
+// Wait so player can see the win lines before next spin
+await new Promise(r=>setTimeout(r,2000));
+}
+updateFreeSpinsHUD(spinNum,totalSpins-spinNum);
+console.log('Free spin '+spinNum+'/'+totalSpins+' - Win: $'+win.toFixed(2)+' - Total: $'+freeSpinsTotalWin.toFixed(2));
+}
+// Free spins complete
+clearWinLines();
+console.log('=== FREE SPINS COMPLETE ===');
+console.log('Total won: $'+freeSpinsTotalWin.toFixed(2));
+await new Promise(r=>setTimeout(r,1000));
+await endFreeSpinsMode();
+}
+
+initGame();
+</script>
+</body>
+</html>
