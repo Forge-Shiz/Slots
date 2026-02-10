@@ -3,115 +3,556 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Crypto Slots</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<title>Forge Casino</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
 body {
-  background: linear-gradient(135deg, #1a0a2e 0%, #16213e 50%, #0f3460 100%);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #0f0f0f;
+  color: #fff;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
+
+/* Navigation */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: rgba(15, 15, 15, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+}
+
+.nav-logo {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-logo svg {
+  width: 28px;
+  height: 28px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 32px;
+  margin-left: 48px;
+}
+
+.nav-links a {
+  color: rgba(255,255,255,0.6);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.nav-links a:hover, .nav-links a.active {
+  color: #fff;
+}
+
+/* Main Content */
+main {
+  padding-top: 64px;
+}
+
+/* Hero */
+.hero {
+  padding: 80px 32px 60px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.08) 0%, transparent 100%);
+}
+
+.hero h1 {
+  font-size: 48px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  letter-spacing: -1px;
+}
+
+.hero p {
+  font-size: 18px;
+  color: rgba(255,255,255,0.5);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* Games Section */
+.games-section {
+  padding: 0 32px 80px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.section-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.section-header span {
+  font-size: 14px;
+  color: rgba(255,255,255,0.4);
+}
+
+/* Games Grid */
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+/* Game Card */
 .game-card {
-  transition: all 0.3s ease;
-  background: rgba(0,0,0,0.4);
-  border: 2px solid rgba(255,255,255,0.1);
+  position: relative;
+  background: #1a1a1a;
+  border-radius: 12px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
+
 .game-card:hover {
-  transform: translateY(-10px) scale(1.02);
-  border-color: rgba(255,215,0,0.5);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 30px rgba(255,215,0,0.2);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
 }
-.game-card img {
-  transition: all 0.3s ease;
+
+.game-thumb {
+  position: relative;
+  aspect-ratio: 16/9;
+  overflow: hidden;
 }
-.game-card:hover img {
+
+.game-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.game-card:hover .game-thumb img {
   transform: scale(1.05);
 }
-.neon-text {
-  text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 40px currentColor;
+
+/* Play overlay */
+.play-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.game-card:hover .play-overlay {
+  opacity: 1;
+}
+
+.play-btn {
+  width: 56px;
+  height: 56px;
+  background: #6366f1;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: scale(0.9);
+  transition: transform 0.2s;
+}
+
+.game-card:hover .play-btn {
+  transform: scale(1);
+}
+
+.play-btn svg {
+  width: 24px;
+  height: 24px;
+  fill: #fff;
+  margin-left: 2px;
+}
+
+/* Card badge */
+.card-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: #6366f1;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-badge.hot {
+  background: #ef4444;
+}
+
+/* Card info */
+.game-info {
+  padding: 16px;
+}
+
+.game-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.game-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+}
+
+.game-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.game-meta svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.6;
+}
+
+/* Featured Card */
+.featured-card {
+  grid-column: span 2;
+}
+
+.featured-card .game-thumb {
+  aspect-ratio: 21/9;
+}
+
+@media (max-width: 768px) {
+  .featured-card {
+    grid-column: span 1;
+  }
+  .featured-card .game-thumb {
+    aspect-ratio: 16/9;
+  }
+}
+
+/* Footer */
+footer {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding: 40px 32px;
+  text-align: center;
+}
+
+.footer-content {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.footer-logo {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.footer-logo svg {
+  width: 24px;
+  height: 24px;
+}
+
+.footer-text {
+  font-size: 13px;
+  color: rgba(255,255,255,0.3);
+  max-width: 600px;
+  margin: 0 auto 24px;
+  line-height: 1.6;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+}
+
+.footer-links a {
+  font-size: 13px;
+  color: rgba(255,255,255,0.4);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover {
+  color: #fff;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  nav { padding: 0 16px; }
+  .nav-links { display: none; }
+  .hero { padding: 60px 16px 40px; }
+  .hero h1 { font-size: 32px; }
+  .games-section { padding: 0 16px 60px; }
+  .games-grid { grid-template-columns: 1fr; }
 }
 </style>
 </head>
-<body class="text-white">
-<div class="container mx-auto px-4 py-12">
-  
-  <header class="text-center mb-16">
-    <h1 class="text-6xl font-black mb-4 bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500 bg-clip-text text-transparent">
-      🎰 CRYPTO SLOTS 🎰
-    </h1>
-    <p class="text-xl text-gray-400">Choose Your Game</p>
-  </header>
+<body>
 
-  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-    
-    <!-- Florida Man -->
-    <a href="florida-man/" class="game-card rounded-2xl overflow-hidden">
-      <div class="aspect-video bg-gradient-to-br from-green-900 to-green-700 flex items-center justify-center p-4">
-        <img src="florida-man/assets/logo.png" alt="Florida Man" class="max-h-full max-w-full object-contain">
-      </div>
-      <div class="p-6">
-        <h2 class="text-2xl font-bold text-yellow-400 mb-2">🐊 Florida Man</h2>
-        <p class="text-gray-400 text-sm mb-3">Classic 5x3 slot with 5 paylines. Beer, gators, and chaos!</p>
-        <div class="flex gap-2">
-          <span class="px-2 py-1 bg-green-900/50 rounded text-xs text-green-400">5 Lines</span>
-          <span class="px-2 py-1 bg-blue-900/50 rounded text-xs text-blue-400">96% RTP</span>
-        </div>
-      </div>
-    </a>
+<nav>
+  <a href="/" class="nav-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+    </svg>
+    Forge Casino
+  </a>
+  <div class="nav-links">
+    <a href="#" class="active">Slots</a>
+    <a href="#">Live Casino</a>
+    <a href="#">Promotions</a>
+  </div>
+</nav>
 
-    <!-- Area 51 -->
-    <a href="area-51/" class="game-card rounded-2xl overflow-hidden">
-      <div class="aspect-video bg-gradient-to-br from-purple-900 to-indigo-900 flex items-center justify-center p-4">
-        <img src="area-51/assets/logo.png" alt="Area 51" class="max-h-full max-w-full object-contain">
-      </div>
-      <div class="p-6">
-        <h2 class="text-2xl font-bold text-green-400 mb-2">👽 Area 51 Files</h2>
-        <p class="text-gray-400 text-sm mb-3">Free spins with expanding symbols! Uncover the truth...</p>
-        <div class="flex gap-2">
-          <span class="px-2 py-1 bg-purple-900/50 rounded text-xs text-purple-400">10 Lines</span>
-          <span class="px-2 py-1 bg-green-900/50 rounded text-xs text-green-400">Free Spins</span>
-          <span class="px-2 py-1 bg-blue-900/50 rounded text-xs text-blue-400">96% RTP</span>
-        </div>
-      </div>
-    </a>
-
-    <!-- RealmFall -->
-    <a href="realmfall/" class="game-card rounded-2xl overflow-hidden">
-      <div class="aspect-video bg-gradient-to-br from-teal-900 to-cyan-800 flex items-center justify-center p-4">
-        <img src="realmfall/assets/logo.webp" alt="RealmFall" class="max-h-full max-w-full object-contain">
-      </div>
-      <div class="p-6">
-        <h2 class="text-2xl font-bold text-cyan-400 mb-2">💎 RealmFall</h2>
-        <p class="text-gray-400 text-sm mb-3">Cascade slots! Matching symbols vanish and new ones fall. Multipliers grow with each cascade!</p>
-        <div class="flex gap-2">
-          <span class="px-2 py-1 bg-teal-900/50 rounded text-xs text-teal-400">20 Lines</span>
-          <span class="px-2 py-1 bg-cyan-900/50 rounded text-xs text-cyan-400">Cascades</span>
-          <span class="px-2 py-1 bg-blue-900/50 rounded text-xs text-blue-400">96% RTP</span>
-        </div>
-      </div>
-    </a>
-
-    <!-- Moonshine Hollow -->
-    <a href="moonshine-hollow/" class="game-card rounded-2xl overflow-hidden">
-      <div class="aspect-video bg-gradient-to-br from-amber-900 to-orange-800 flex items-center justify-center p-4">
-        <img src="moonshine-hollow/assets/logo.webp" alt="Moonshine Hollow" class="max-h-full max-w-full object-contain">
-      </div>
-      <div class="p-6">
-        <h2 class="text-2xl font-bold text-amber-400 mb-2">🥃 Moonshine Hollow</h2>
-        <p class="text-gray-400 text-sm mb-3">Backwoods brewing! Scatter anticipation with bubbling moonshine. Free spins with multiplier jugs up to 20x!</p>
-        <div class="flex gap-2">
-          <span class="px-2 py-1 bg-amber-900/50 rounded text-xs text-amber-400">10 Lines</span>
-          <span class="px-2 py-1 bg-orange-900/50 rounded text-xs text-orange-400">Free Spins</span>
-          <span class="px-2 py-1 bg-blue-900/50 rounded text-xs text-blue-400">96% RTP</span>
-        </div>
-      </div>
-    </a>
-
+<main>
+  <div class="hero">
+    <h1>Original Slot Games</h1>
+    <p>Premium slots with unique themes, bonus features, and provably fair gameplay.</p>
   </div>
 
-  <footer class="text-center mt-16 text-gray-500 text-sm">
-    <p>Play responsibly • Games are for entertainment only</p>
-  </footer>
+  <section class="games-section">
+    <div class="section-header">
+      <h2>All Games</h2>
+      <span>8 games</span>
+    </div>
 
-</div>
+    <div class="games-grid">
+
+      <!-- Mall Rats - Featured -->
+      <a href="mallrats/" class="game-card featured-card">
+        <div class="game-thumb">
+          <img src="mallrats/assets/logo.png" alt="Mall Rats" style="object-fit: contain; background: linear-gradient(135deg, #7c3aed, #ec4899); padding: 32px;">
+          <div class="play-overlay">
+            <div class="play-btn">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+            </div>
+          </div>
+          <span class="card-badge">New</span>
+        </div>
+        <div class="game-info">
+          <div class="game-title">Mall Rats</div>
+          <div class="game-meta">
+            <span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+              5×6
+            </span>
+            <span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              18 Lines
+            </span>
+            <span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+              96% RTP
+            </span>
+          </div>
+        </div>
+      </a>
+
+      <!-- 3AM Bodega -->
+      <a href="3am-bodega/" class="game-card">
+        <div class="game-thumb">
+          <img src="3am-bodega/assets/logo.webp" alt="3AM Bodega" style="object-fit: contain; background: linear-gradient(135deg, #0f766e, #1e3a5f); padding: 24px;">
+          <div class="play-overlay">
+            <div class="play-btn">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="game-info">
+          <div class="game-title">3AM Bodega</div>
+          <div class="game-meta">
+            <span>5×3</span>
+            <span>21 Lines</span>
+            <span>96% RTP</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Moonshine Hollow -->
+      <a href="moonshine-hollow/" class="game-card">
+        <div class="game-thumb">
+          <img src="moonshine-hollow/assets/logo.webp" alt="Moonshine Hollow" style="object-fit: contain; background: linear-gradient(135deg, #b45309, #7c2d12); padding: 24px;">
+          <div class="play-overlay">
+            <div class="play-btn">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+            </div>
+          </div>
+          <span class="card-badge hot">Hot</span>
+        </div>
+        <div class="game-info">
+          <div class="game-title">Moonshine Hollow</div>
+          <div class="game-meta">
+            <span>5×3</span>
+            <span>10 Lines</span>
+            <span>96% RTP</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- RealmFall -->
+      <a href="realmfall/" class="game-card">
+        <div class="game-thumb">
+          <img src="realmfall/assets/logo.webp" alt="RealmFall" style="object-fit: contain; background: linear-gradient(135deg, #0891b2, #0f766e); padding: 24px;">
+          <div class="play-overlay">
+            <div class="play-btn">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="game-info">
+          <div class="game-title">RealmFall</div>
+          <div class="game-meta">
+            <span>5×3</span>
+            <span>20 Lines</span>
+            <span>96% RTP</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Area 51 -->
+      <a href="area-51/" class="game-card">
+        <div class="game-thumb">
+          <img src="area-51/assets/logo.png" alt="Area 51" style="object-fit: contain; background: linear-gradient(135deg, #5b21b6, #1e1b4b); padding: 24px;">
+          <div class="play-overlay">
+            <div class="play-btn">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="game-info">
+          <div class="game-title">Area 51 Files</div>
+          <div class="game-meta">
+            <span>5×3</span>
+            <span>10 Lines</span>
+            <span>96% RTP</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Florida Man -->
+      <a href="florida-man/" class="game-card">
+        <div class="game-thumb">
+          <img src="florida-man/assets/logo.png" alt="Florida Man" style="object-fit: contain; background: linear-gradient(135deg, #15803d, #14532d); padding: 24px;">
+          <div class="play-overlay">
+            <div class="play-btn">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="game-info">
+          <div class="game-title">Florida Man</div>
+          <div class="game-meta">
+            <span>5×3</span>
+            <span>5 Lines</span>
+            <span>96% RTP</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Eastwood Ravine -->
+      <a href="eastwood-ravine/" class="game-card">
+        <div class="game-thumb">
+          <img src="eastwood-ravine/assets/logo.webp" alt="Eastwood Ravine" style="object-fit: contain; background: linear-gradient(135deg, #78350f, #451a03); padding: 24px;">
+          <div class="play-overlay">
+            <div class="play-btn">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+            </div>
+          </div>
+          <span class="card-badge">New</span>
+        </div>
+        <div class="game-info">
+          <div class="game-title">Eastwood Ravine</div>
+          <div class="game-meta">
+            <span>5×3</span>
+            <span>15 Lines</span>
+            <span>96% RTP</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Triggered -->
+      <a href="triggered/" class="game-card">
+        <div class="game-thumb">
+          <img src="triggered/logo/logo.png" alt="Triggered" style="object-fit: contain; background: linear-gradient(135deg, #dc2626, #7f1d1d); padding: 24px;">
+          <div class="play-overlay">
+            <div class="play-btn">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+            </div>
+          </div>
+          <span class="card-badge hot">Hot</span>
+        </div>
+        <div class="game-info">
+          <div class="game-title">Triggered</div>
+          <div class="game-meta">
+            <span>5×3</span>
+            <span>10 Lines</span>
+            <span>96% RTP</span>
+          </div>
+        </div>
+      </a>
+
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="footer-content">
+    <div class="footer-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+      Forge Casino
+    </div>
+    <p class="footer-text">
+      Play responsibly. All games are for entertainment purposes only.
+      Must be 18+ to play. Games use provably fair RNG technology.
+    </p>
+    <div class="footer-links">
+      <a href="#">Terms</a>
+      <a href="#">Privacy</a>
+      <a href="#">Responsible Gaming</a>
+      <a href="#">Support</a>
+    </div>
+  </div>
+</footer>
+
 </body>
 </html>

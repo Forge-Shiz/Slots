@@ -1,0 +1,2551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Eastwood Ravine - Hold & Win Slot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #ffd700;
+            --gold-dark: #b8860b;
+            --brown: #8b4513;
+            --brown-dark: #5d2e0c;
+            --panel-bg: rgba(0, 0, 0, 0.75);
+            --border: rgba(255, 215, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: #1a0a00;
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: #fff;
+        }
+
+        /* Loading Screen */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('assets/bg-base.webp?v=1770742140') center center / cover no-repeat;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-logo {
+            width: 400px;
+            max-width: 80%;
+            margin-bottom: 2rem;
+        }
+
+        .loading-bar-container {
+            width: 300px;
+            max-width: 80%;
+            height: 20px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 10px;
+            border: 2px solid var(--gold-dark);
+            overflow: hidden;
+        }
+
+        .loading-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--gold-dark), var(--gold));
+            transition: width 0.3s ease;
+        }
+
+        /* Hunt Transition Video */
+        .hunt-video-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 500;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+
+        .hunt-video-overlay.active {
+            display: flex;
+        }
+
+        .hunt-video-overlay.fade-out {
+            opacity: 0;
+        }
+
+        .hunt-video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Main Game Wrapper */
+        .game-wrapper {
+            position: relative;
+            min-height: 100vh;
+            background: url('assets/bg-base.webp?v=1770742140') center center / cover no-repeat fixed;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+        }
+
+        .game-wrapper.hunt-mode {
+            background-image: url('assets/bg-hunt.webp');
+        }
+
+        /* Header */
+        .game-header {
+            width: 90%;
+            max-width: 1200px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 20px;
+            margin-bottom: 5px;
+        }
+
+        .game-logo {
+            height: 50px;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .stat-badge {
+            background: var(--panel-bg);
+            padding: 8px 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(5px);
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--gold);
+        }
+
+        .rgs-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #888;
+        }
+
+        .rgs-indicator.connected {
+            background: #4CAF50;
+            box-shadow: 0 0 8px #4CAF50;
+        }
+
+        /* Frame Container - holds background, grid, and frame overlay */
+        .frame-container {
+            position: relative;
+            width: 90%;
+            max-width: 1200px;
+            aspect-ratio: 1423 / 902;
+        }
+
+        /* Frame background (behind reels) */
+        .frame-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('assets/framebck.webp?v=1770742140') center center / contain no-repeat;
+            z-index: 1;
+        }
+
+        /* Reel grid - positioned inside frame cutout */
+        .grid-container {
+            position: absolute;
+            left: 12.79%;
+            top: 17.52%;
+            width: 74.49%;
+            height: 64.75%;
+            z-index: 2;
+            overflow: hidden;
+            /* Wood plank background - 3 planks aligned to 3 rows */
+            /* background-size: width controls zoom, height auto preserves aspect */
+            /* background-position-y: negative % moves image UP to align gaps */
+            background: url('assets/framebck.webp?v=1770742140');
+            background-size: 134.5% auto;
+            background-position: center 42%;
+        }
+
+        .grid {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 3px;
+            padding: 0;
+        }
+
+        /* Frame overlay (over reels) */
+        .frame-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('assets/frame.webp?v=1770742140') center center / contain no-repeat;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        /* Grid Cells - Transparent, dark wood shows through gaps */
+        .cell {
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: visible;
+            border: none;
+            border-radius: 2px;
+            padding: 4px;
+        }
+
+        /* Win highlighting - NoLimit City style */
+        /* Dimmed cells during win display */
+        .cell.dimmed {
+            opacity: 0.3;
+            transition: opacity 0.2s ease;
+        }
+
+        /* Winning cells with golden shimmer */
+        .cell.winning {
+            z-index: 10;
+            animation: winShimmer 0.8s ease-in-out 2;
+        }
+
+        .cell.winning .symbol-img {
+            animation: winShimmer 0.8s ease-in-out 2;
+        }
+
+        @keyframes winShimmer {
+            0% { filter: brightness(1); }
+            50% { filter: brightness(1.3) drop-shadow(0 0 8px rgba(255,200,50,0.7)); }
+            100% { filter: brightness(1); }
+        }
+
+        /* No special styling for coin cells in base game */
+        .cell.coin-cell {
+            /* No glow, no box-shadow - coin sits on wood like any other symbol */
+        }
+
+        /* Payline connector line */
+        .payline-connector {
+            position: absolute;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .payline-connector line {
+            stroke: rgba(255, 200, 50, 0.8);
+            stroke-width: 3;
+            stroke-linecap: round;
+            filter: drop-shadow(0 0 4px rgba(255, 200, 50, 0.6));
+        }
+
+        @keyframes coin-slam {
+            0% { transform: scale(0) translateY(-50px); opacity: 0; }
+            60% { transform: scale(1.15) translateY(0); }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        /* Symbol Images - 85% of cell, centered */
+        .symbol-img {
+            position: absolute;
+            width: 85%;
+            height: 85%;
+            object-fit: contain;
+            display: none;
+        }
+
+        .symbol-img.active {
+            display: block;
+        }
+
+        .cell.spinning .symbol-img {
+            animation: symbol-spin 0.1s linear infinite;
+        }
+
+        @keyframes symbol-spin {
+            0% { transform: translateY(-10%); opacity: 0.7; }
+            100% { transform: translateY(10%); opacity: 1; }
+        }
+
+        /* Win Display */
+        .win-display {
+            width: 90%;
+            max-width: 1200px;
+            background: var(--panel-bg);
+            padding: 8px 15px;
+            text-align: center;
+            border-radius: 8px;
+            margin-top: 8px;
+            min-height: 40px;
+            backdrop-filter: blur(5px);
+            border: 1px solid var(--border);
+        }
+
+        .win-text {
+            font-family: 'Rye', serif;
+            font-size: 1.3rem;
+            color: var(--gold);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .win-text.big {
+            font-size: 1.8rem;
+            animation: win-glow 0.5s ease infinite;
+        }
+
+        @keyframes win-glow {
+            0%, 100% { text-shadow: 0 0 10px var(--gold); }
+            50% { text-shadow: 0 0 30px var(--gold), 0 0 50px var(--gold); }
+        }
+
+        /* Paylines Info */
+        .paylines-info {
+            text-align: center;
+            padding: 5px;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.7);
+            margin-top: 5px;
+        }
+
+        /* Control Dock */
+        .dock {
+            width: 90%;
+            max-width: 1200px;
+            background: var(--panel-bg);
+            padding: 12px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            border-radius: 10px;
+            margin-top: 8px;
+            backdrop-filter: blur(5px);
+            border: 1px solid var(--border);
+        }
+
+        .bet-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .bet-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid var(--gold-dark);
+            background: rgba(0,0,0,0.5);
+            color: var(--gold);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .bet-btn:hover:not(:disabled) {
+            background: var(--gold-dark);
+            color: #000;
+        }
+
+        .bet-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .bet-amount {
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .bet-label {
+            font-size: 0.65rem;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+
+        .bet-value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--gold);
+        }
+
+        .spin-btn {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            border: 4px solid var(--gold);
+            background: linear-gradient(180deg, var(--gold) 0%, var(--gold-dark) 100%);
+            color: #000;
+            font-family: 'Rye', serif;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+
+        .spin-btn:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 6px 25px rgba(255,215,0,0.4);
+        }
+
+        .spin-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .sound-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: transparent;
+            color: #aaa;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .sound-btn:hover {
+            color: var(--gold);
+            border-color: var(--gold);
+        }
+
+        /* Hunt Mode Overlay */
+        .hunt-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('assets/bg-hunt.webp') center center / cover no-repeat;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px;
+        }
+
+        .hunt-overlay.active {
+            display: flex;
+        }
+
+        .hunt-title {
+            width: 350px;
+            max-width: 80%;
+            height: auto;
+            margin-bottom: 25px;
+            animation: hunt-title-pulse 2s ease infinite;
+            filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.6));
+        }
+
+        @keyframes hunt-title-pulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.6)); }
+            50% { transform: scale(1.03); filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.9)); }
+        }
+
+        .hunt-frame-container {
+            position: relative;
+            width: 90vw;
+            max-width: 1100px;
+            aspect-ratio: 1423 / 902;
+        }
+
+        .hunt-frame-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('assets/framebck.webp?v=1770742140') center center / contain no-repeat;
+            z-index: 1;
+        }
+
+        .hunt-grid-container {
+            position: absolute;
+            left: 12.79%;
+            top: 17.52%;
+            width: 74.49%;
+            height: 64.75%;
+            z-index: 2;
+            overflow: hidden;
+            /* Wood plank background for 5x5 hunt grid */
+            background: url('assets/framebck.webp?v=1770742140');
+            background-size: 134.5% auto;
+            background-position: center 31%;
+        }
+
+        .hunt-grid {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(5, 1fr);
+            gap: 2px;
+            /* Add padding inside frame so coins don't touch edges */
+            padding: 4% 3% 3% 3%;
+            box-sizing: border-box;
+            position: relative;
+            z-index: 2; /* Above reel strips */
+        }
+
+        .hunt-frame-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('assets/frame.webp?v=1770742140') center center / contain no-repeat;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        /* Hunt Mode Cells - completely transparent, wood shows through */
+        .hunt-cell {
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: visible;
+            border: none;
+            /* Ensure cells fill their grid space - critical for empty cells */
+            width: 100%;
+            height: 100%;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        /* Empty cells - COMPLETELY transparent, just wood behind */
+        .hunt-cell.empty {
+            background: transparent;
+        }
+
+        /* Cells with coins - also transparent, coin sits on wood */
+        .hunt-cell.has-coin {
+            background: transparent;
+        }
+
+        /* Column Reel Strip - scrolls behind sticky coins */
+        .hunt-column-reel {
+            position: absolute;
+            /* Match grid padding exactly: 4% top, 3% bottom = 93% height */
+            top: 4%;
+            bottom: 3%;
+            overflow: hidden;
+            z-index: 1; /* Behind sticky coins (z-index 5) */
+            pointer-events: none;
+        }
+
+        .hunt-reel-strip {
+            position: absolute;
+            top: -200%; /* Start above visible area (10 coins worth) */
+            left: 0;
+            width: 100%;
+            height: 300%; /* 15 coins * 20% each = 300% of container */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .hunt-reel-strip.spinning {
+            animation: columnReelSpin 0.1s linear infinite;
+        }
+
+        /* Each reel coin = exactly 1/5 of container height (matches grid row) */
+        .hunt-reel-strip .reel-coin {
+            width: 100%;
+            height: calc(100% / 15); /* 15 coins in strip, each is 1/15 of strip = 20% of container */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-sizing: border-box;
+            padding: 1px;
+        }
+
+        .hunt-reel-strip .reel-coin img {
+            width: 95%; /* Match sticky coin width exactly */
+            height: auto;
+            object-fit: contain;
+            opacity: 0.9;
+        }
+
+        @keyframes columnReelSpin {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(6.67%); } /* 1 coin height = 20% container / 300% strip = 6.67% */
+        }
+
+        /* Sticky coins sit above the reel strip */
+        .hunt-cell.has-coin {
+            background: transparent;
+            z-index: 5; /* Above reel strips */
+            position: relative;
+        }
+
+        /* Empty cells transparent, reel shows through */
+        .hunt-cell.empty {
+            background: transparent;
+            z-index: 1;
+        }
+
+        /* Cell stopping - transparent */
+        .hunt-cell.stopping {
+            background: transparent;
+        }
+
+        /* Last trail heartbeat effect */
+        .hunt-stat.last-trail .hunt-stat-value {
+            animation: heartbeat 0.8s ease-in-out infinite;
+            color: #FF5722 !important;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            25% { transform: scale(1.15); }
+            50% { transform: scale(1); }
+            75% { transform: scale(1.1); }
+        }
+
+        /* Trails flash animations */
+        .hunt-stat-value.flash-green {
+            animation: flashGreen 0.6s ease-out;
+        }
+
+        .hunt-stat-value.flash-red {
+            animation: flashRed 0.6s ease-out;
+        }
+
+        @keyframes flashGreen {
+            0% { transform: scale(1.5); color: #4CAF50; text-shadow: 0 0 20px #4CAF50; }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes flashRed {
+            0% { transform: scale(1.3); color: #FF5722; text-shadow: 0 0 20px #FF5722; }
+            100% { transform: scale(1); }
+        }
+
+        /* Coin slam animation when landing - DRAMATIC */
+        .hunt-cell.new-coin .hunt-coin-img {
+            animation: coinSlam 0.4s ease-out forwards;
+        }
+
+        /* Simple coin slam - scale bounce only, no glow */
+        @keyframes coinSlam {
+            0% { transform: scale(1.3); opacity: 0; }
+            50% { transform: scale(0.95); opacity: 1; }
+            75% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Empty reveal - completely transparent */
+        .hunt-cell.reveal-empty {
+            background: transparent;
+        }
+
+
+        .hunt-coin-img {
+            /* Large coins filling the cell */
+            width: 95%;
+            height: auto;
+            object-fit: contain;
+        }
+
+        /* Value badge centered on coin */
+        .hunt-coin-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Roboto', sans-serif;
+            font-size: clamp(0.7rem, 2vw, 1.1rem);
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow:
+                -1px -1px 0 #000,
+                1px -1px 0 #000,
+                -1px 1px 0 #000,
+                1px 1px 0 #000,
+                0 0 8px rgba(0,0,0,1);
+            white-space: nowrap;
+            line-height: 1;
+            z-index: 10;
+            pointer-events: none;
+            /* Dark pill background */
+            background: rgba(0,0,0,0.75);
+            padding: 3px 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,200,50,0.5);
+        }
+
+        /* Jackpot badge styles */
+        .hunt-coin-value.jackpot-mini {
+            font-size: clamp(0.6rem, 1.8vw, 1rem);
+            background: linear-gradient(180deg, #cd7f32 0%, #8b4513 100%);
+            color: #fff;
+            border: 1px solid #daa520;
+        }
+
+        .hunt-coin-value.jackpot-minor {
+            font-size: clamp(0.6rem, 1.8vw, 1rem);
+            background: linear-gradient(180deg, #c0c0c0 0%, #808080 100%);
+            color: #fff;
+            border: 1px solid #d4d4d4;
+        }
+
+        .hunt-coin-value.jackpot-major {
+            font-size: clamp(0.65rem, 1.9vw, 1.05rem);
+            background: linear-gradient(180deg, #ffd700 0%, #b8860b 100%);
+            color: #000;
+            border: 1px solid #fff;
+            text-shadow: 0 0 4px rgba(255,255,255,0.5);
+        }
+
+        .hunt-coin-value.jackpot-grand {
+            font-size: clamp(0.65rem, 1.9vw, 1.05rem);
+            background: linear-gradient(180deg, #ff4444 0%, #8b0000 100%);
+            color: #ffd700;
+            border: 2px solid #ffd700;
+            text-shadow: 0 0 6px rgba(0,0,0,1);
+            animation: grandPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes grandPulse {
+            0%, 100% { box-shadow: 0 0 8px rgba(255,68,68,0.6); }
+            50% { box-shadow: 0 0 16px rgba(255,68,68,0.9), 0 0 24px rgba(255,215,0,0.5); }
+        }
+
+        .hunt-info {
+            display: flex;
+            justify-content: center;
+            width: 90%;
+            max-width: 900px;
+            margin-top: 15px;
+            gap: 20px;
+        }
+
+        .hunt-stat {
+            background: var(--panel-bg);
+            padding: 12px 30px;
+            border-radius: 10px;
+            border: 2px solid var(--gold-dark);
+            text-align: center;
+            flex: 1;
+            max-width: 200px;
+        }
+
+        .hunt-stat-label {
+            font-size: 0.8rem;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+
+        .hunt-stat-value {
+            font-family: 'Rye', serif;
+            font-size: 1.6rem;
+            color: var(--gold);
+            transition: transform 0.3s ease, color 0.3s ease;
+        }
+
+        /* Big Win Overlay */
+        .bigwin-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            overflow: hidden;
+        }
+
+        /* Video container - centered, sized like image */
+        .bigwin-video-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(1.15);
+            max-width: 750px;
+            width: 90%;
+            z-index: 0;
+            display: none;
+            mask-image: radial-gradient(ellipse 60% 60% at center, black 40%, transparent 80%);
+            -webkit-mask-image: radial-gradient(ellipse 60% 60% at center, black 40%, transparent 80%);
+        }
+
+        .bigwin-video-container.active {
+            display: block;
+        }
+
+        .bigwin-video-player {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Fallback image - hidden when video is playing */
+        .bigwin-bg-img {
+            position: absolute;
+            max-width: 850px;
+            width: 95%;
+            height: auto;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 1;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .bigwin-bg-img.hidden {
+            display: none;
+        }
+
+        /* Gold sparkle particles */
+        .bigwin-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .sparkle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: radial-gradient(circle, #FFD700 0%, rgba(255,215,0,0) 70%);
+            border-radius: 50%;
+            opacity: 0;
+            animation: sparkleFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes sparkleFloat {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-20vh) scale(1.5); opacity: 0; }
+        }
+
+        .sparkle:nth-child(1) { left: 10%; animation-delay: 0s; width: 6px; height: 6px; }
+        .sparkle:nth-child(2) { left: 20%; animation-delay: 0.3s; width: 10px; height: 10px; }
+        .sparkle:nth-child(3) { left: 30%; animation-delay: 0.7s; width: 5px; height: 5px; }
+        .sparkle:nth-child(4) { left: 40%; animation-delay: 0.2s; width: 8px; height: 8px; }
+        .sparkle:nth-child(5) { left: 50%; animation-delay: 1.1s; width: 12px; height: 12px; }
+        .sparkle:nth-child(6) { left: 60%; animation-delay: 0.5s; width: 7px; height: 7px; }
+        .sparkle:nth-child(7) { left: 70%; animation-delay: 0.9s; width: 9px; height: 9px; }
+        .sparkle:nth-child(8) { left: 80%; animation-delay: 0.4s; width: 6px; height: 6px; }
+        .sparkle:nth-child(9) { left: 90%; animation-delay: 1.3s; width: 11px; height: 11px; }
+        .sparkle:nth-child(10) { left: 15%; animation-delay: 1.5s; width: 8px; height: 8px; }
+        .sparkle:nth-child(11) { left: 35%; animation-delay: 0.8s; width: 5px; height: 5px; }
+        .sparkle:nth-child(12) { left: 55%; animation-delay: 1.7s; width: 10px; height: 10px; }
+        .sparkle:nth-child(13) { left: 75%; animation-delay: 0.6s; width: 7px; height: 7px; }
+        .sparkle:nth-child(14) { left: 85%; animation-delay: 1.9s; width: 9px; height: 9px; }
+        .sparkle:nth-child(15) { left: 25%; animation-delay: 2.1s; width: 6px; height: 6px; }
+
+        .bigwin-overlay.active {
+            display: flex;
+        }
+
+        .bigwin-overlay.visible {
+            opacity: 1;
+        }
+
+        .bigwin-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bigwin-title {
+            font-family: 'Rye', serif;
+            font-size: clamp(3rem, 9vw, 5rem);
+            font-weight: 900;
+            color: #FFFFFF;
+            letter-spacing: 4px;
+            text-shadow:
+                0 0 15px rgba(255,215,0,1),
+                0 0 30px rgba(255,215,0,0.9),
+                0 0 60px rgba(255,165,0,0.7),
+                0 0 90px rgba(255,130,0,0.4);
+            transform: scale(0);
+            opacity: 0;
+            text-align: center;
+            line-height: 1.1;
+        }
+
+        .bigwin-title.animate-in {
+            animation: bigwinTextPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards,
+                       bigWinGlow 1.5s ease-in-out infinite 0.6s;
+        }
+
+        @keyframes bigwinTextPop {
+            0% { transform: scale(0); opacity: 0; }
+            60% { transform: scale(1.3); opacity: 1; }
+            80% { transform: scale(0.95); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes bigWinGlow {
+            0%, 100% {
+                text-shadow:
+                    0 0 15px rgba(255,215,0,1),
+                    0 0 30px rgba(255,215,0,0.9),
+                    0 0 60px rgba(255,165,0,0.7),
+                    0 0 90px rgba(255,130,0,0.4);
+            }
+            50% {
+                text-shadow:
+                    0 0 20px rgba(255,215,0,1),
+                    0 0 40px rgba(255,215,0,1),
+                    0 0 80px rgba(255,165,0,0.8),
+                    0 0 120px rgba(255,130,0,0.5);
+            }
+        }
+
+        .bigwin-amount {
+            font-family: 'Rye', serif;
+            font-size: clamp(2.5rem, 8vw, 4.5rem);
+            font-weight: 900;
+            color: #FFE44D;
+            text-shadow:
+                0 0 15px rgba(255,215,0,0.9),
+                0 0 40px rgba(255,165,0,0.6);
+            margin-top: 20px;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .bigwin-amount.animate-in {
+            animation: bigwinAmountSlide 0.4s ease-out forwards;
+        }
+
+        @keyframes bigwinAmountSlide {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Tier-specific colors */
+        .bigwin-title.mega-win {
+            color: #FFFFFF;
+            text-shadow:
+                0 0 15px rgba(255,107,107,1),
+                0 0 30px rgba(255,107,107,0.9),
+                0 0 60px rgba(255,215,0,0.7),
+                0 0 90px rgba(255,100,100,0.4);
+        }
+
+        .bigwin-title.epic-win {
+            color: #FFFFFF;
+            text-shadow:
+                0 0 15px rgba(255,0,255,1),
+                0 0 30px rgba(0,255,255,0.9),
+                0 0 60px rgba(255,0,255,0.7),
+                0 0 90px rgba(0,255,255,0.4);
+            animation: bigwinTextPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, epicGlow 1s ease-in-out infinite 0.6s;
+        }
+
+        @keyframes epicGlow {
+            0%, 100% {
+                text-shadow:
+                    0 0 15px rgba(255,0,255,1),
+                    0 0 30px rgba(0,255,255,0.9),
+                    0 0 60px rgba(255,0,255,0.7),
+                    0 0 90px rgba(0,255,255,0.4);
+            }
+            50% {
+                text-shadow:
+                    0 0 20px rgba(0,255,255,1),
+                    0 0 40px rgba(255,0,255,1),
+                    0 0 80px rgba(0,255,255,0.8),
+                    0 0 120px rgba(255,0,255,0.5);
+            }
+        }
+
+        /* Rain Effect - subtle atmospheric overlay */
+        .rain-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .rain-container.hidden {
+            display: none;
+        }
+
+        .raindrop {
+            position: absolute;
+            top: -30px;
+            width: 2px;
+            background: linear-gradient(to bottom,
+                rgba(200, 210, 230, 0) 0%,
+                rgba(200, 210, 230, 0.6) 50%,
+                rgba(200, 210, 230, 0) 100%);
+            animation: rainFall linear infinite;
+        }
+
+        @keyframes rainFall {
+            0% {
+                transform: translateY(-30px) rotate(8deg);
+                opacity: 0.7;
+            }
+            100% {
+                transform: translateY(100vh) rotate(8deg);
+                opacity: 0.1;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .game-wrapper {
+                padding: 5px;
+            }
+
+            .game-header {
+                flex-direction: column;
+                gap: 8px;
+                padding: 5px 10px;
+            }
+
+            .game-logo {
+                height: 40px;
+            }
+
+            .header-stats {
+                width: 100%;
+                justify-content: space-around;
+            }
+
+            .frame-container {
+                width: 98%;
+            }
+
+            .win-display {
+                width: 98%;
+                padding: 6px 10px;
+                margin-top: 5px;
+            }
+
+            .dock {
+                width: 98%;
+                flex-wrap: wrap;
+                justify-content: center;
+                padding: 10px 15px;
+                margin-top: 5px;
+            }
+
+            .spin-btn {
+                width: 70px;
+                height: 70px;
+                font-size: 0.85rem;
+            }
+
+            .hunt-title {
+                width: 280px;
+            }
+
+            .hunt-frame-container {
+                width: 98%;
+            }
+
+            .bigwin-amount {
+                font-size: 2.5rem;
+            }
+
+            .paylines-info {
+                font-size: 0.65rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <img src="assets/logo.webp" class="loading-logo" alt="Eastwood Ravine">
+        <div class="loading-bar-container">
+            <div class="loading-bar" id="loadingBar"></div>
+        </div>
+    </div>
+
+    <!-- Hunt Transition Video - preloaded, muted for autoplay -->
+    <div class="hunt-video-overlay" id="huntVideoOverlay">
+        <video class="hunt-video" id="huntVideo"
+               src="assets/thehunt-compressed.mp4"
+               preload="auto"
+               playsinline
+               muted>
+        </video>
+    </div>
+
+    <!-- Big Win Video - preloaded, hidden until triggered -->
+    <video id="bigwinVideo"
+           src="assets/bigwin-compressed.mp4"
+           preload="auto"
+           playsinline
+           muted
+           style="display:none">
+    </video>
+
+    <!-- Main Game -->
+    <div class="game-wrapper" id="gameWrapper">
+        <!-- Rain Effect Overlay - above background, below reels -->
+        <div class="rain-container" id="rainContainer"></div>
+        <!-- Header -->
+        <div class="game-header">
+            <img src="assets/logo.webp" class="game-logo" alt="Eastwood Ravine">
+            <div class="header-stats">
+                <div class="stat-badge">
+                    <div class="stat-label">Balance</div>
+                    <div class="stat-value" id="balanceDisplay">$0.00</div>
+                </div>
+                <div class="stat-badge">
+                    <div class="stat-label">Win</div>
+                    <div class="stat-value" id="winDisplay">$0.00</div>
+                </div>
+                <div class="rgs-indicator" id="rgsIndicator" title="Server connection"></div>
+            </div>
+        </div>
+
+        <!-- Frame with Reels -->
+        <div class="frame-container">
+            <div class="frame-background"></div>
+            <div class="grid-container">
+                <div class="grid" id="grid"></div>
+            </div>
+            <div class="frame-overlay"></div>
+        </div>
+
+        <!-- Win Display -->
+        <div class="win-display">
+            <div class="win-text" id="winText"></div>
+        </div>
+
+        <!-- Paylines Info -->
+        <div class="paylines-info">15 Paylines | Land 6+ Bounty Coins to trigger THE HUNT!</div>
+
+        <!-- Controls -->
+        <div class="dock">
+            <div class="bet-controls">
+                <button class="bet-btn" id="betDown" onclick="changeBet(-1)">-</button>
+                <div class="bet-amount">
+                    <div class="bet-label">Bet</div>
+                    <div class="bet-value" id="betDisplay">$1.00</div>
+                </div>
+                <button class="bet-btn" id="betUp" onclick="changeBet(1)">+</button>
+            </div>
+
+            <button class="spin-btn" id="spinBtn" onclick="spin()">SPIN</button>
+
+            <button class="sound-btn" id="soundBtn" onclick="toggleSound()">
+                <span id="soundIcon">🔇</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Hunt Mode Overlay -->
+    <div class="hunt-overlay" id="huntOverlay">
+        <img src="assets/huntlogo.webp" class="hunt-title" alt="The Hunt">
+        <div class="hunt-frame-container">
+            <div class="hunt-frame-background"></div>
+            <div class="hunt-grid-container">
+                <div class="hunt-grid" id="huntGrid"></div>
+            </div>
+            <div class="hunt-frame-overlay"></div>
+        </div>
+        <div class="hunt-info">
+            <div class="hunt-stat" id="trailsStat">
+                <div class="hunt-stat-label">Trails</div>
+                <div class="hunt-stat-value" id="huntTrails">3</div>
+            </div>
+            <div class="hunt-stat">
+                <div class="hunt-stat-label">Coins</div>
+                <div class="hunt-stat-value" id="huntCoins">0</div>
+            </div>
+            <div class="hunt-stat">
+                <div class="hunt-stat-label">Value</div>
+                <div class="hunt-stat-value" id="huntValue">$0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Big Win Overlay -->
+    <div class="bigwin-overlay" id="bigwinOverlay">
+        <div class="bigwin-video-container" id="bigwinVideoContainer">
+            <video class="bigwin-video-player" id="bigwinVideoPlayer"
+                   playsinline
+                   muted>
+            </video>
+        </div>
+        <div class="bigwin-particles">
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+        </div>
+        <img src="assets/bigwin.webp" class="bigwin-bg-img" id="bigwinBgImg" alt="">
+        <div class="bigwin-content">
+            <div class="bigwin-title" id="bigwinTitle">BIG WIN</div>
+            <div class="bigwin-amount" id="bigwinAmount">$0.00</div>
+        </div>
+    </div>
+
+    <!-- Audio Elements -->
+    <audio id="musicBase" loop preload="auto">
+        <source src="assets/sounds/music-base.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="musicHunt" loop preload="auto">
+        <source src="assets/sounds/music-hunt.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="soundSpin" preload="auto">
+        <source src="assets/sounds/spin.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="soundBigwin" preload="auto">
+        <source src="assets/sounds/bigwin-sound.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // =============================================================================
+        // CONFIGURATION
+        // =============================================================================
+        const API_BASE = '/api/eastwood';
+        const NUM_REELS = 5;
+        const NUM_ROWS = 3;      // Base game: 5x3
+        const HUNT_ROWS = 5;     // Hunt mode: 5x5
+        const BETS = [0.20, 0.50, 1.00, 2.00, 5.00, 10.00, 20.00];
+        const BIG_WIN_THRESHOLD = 10; // 10x bet = big win, 25x = mega, 50x = epic
+
+        const SYMBOLS = {
+            'H1': { name: 'Bounty Hunter', img: 'assets/symbols/h1.webp', wild: true },
+            'H2': { name: 'Bandit Leader', img: 'assets/symbols/h2.webp' },
+            'H3': { name: 'Outlaw Woman', img: 'assets/symbols/h3.webp' },
+            'H4': { name: 'Dynamite Kid', img: 'assets/symbols/h4.webp' },
+            'H5': { name: 'Gambler', img: 'assets/symbols/h5.webp' },
+            'L1': { name: 'Revolver', img: 'assets/symbols/l1.webp' },
+            'L2': { name: 'Sheriff Badge', img: 'assets/symbols/l2.webp' },
+            'L3': { name: 'Whiskey Bottle', img: 'assets/symbols/l3.webp' },
+            'L4': { name: 'Ace', img: 'assets/symbols/l4.webp' },
+            'L5': { name: 'King', img: 'assets/symbols/l5.webp' },
+            'L6': { name: 'Queen', img: 'assets/symbols/l6.webp' },
+            'L7': { name: 'Jack', img: 'assets/symbols/l7.webp' },
+            'L8': { name: 'Ten', img: 'assets/symbols/l8.webp' },
+            'PRIZE': { name: 'Bounty Coin', img: 'assets/symbols/coin.webp' }
+        };
+
+        // =============================================================================
+        // GAME STATE
+        // =============================================================================
+        let sessionId = null;
+        let balance = 0;
+        let betIndex = 2;
+        let spinning = false;
+        let inHunt = false;
+        let huntCoins = [];
+        let huntTrails = 0;
+        let huntTotalWin = 0;
+        let currentBet = 1.00;
+        let soundEnabled = false;
+        let rgsConnected = false;
+        let imagesLoaded = 0;
+        const totalImages = Object.keys(SYMBOLS).length + 4; // symbols + other assets
+
+        // DOM elements
+        let gridCells = [];
+        let huntGridCells = [];
+
+        // Audio elements
+        let musicBase, musicHunt, soundSpin, soundBigwin;
+
+        // =============================================================================
+        // INITIALIZATION
+        // =============================================================================
+        async function init() {
+            // Get audio elements
+            musicBase = document.getElementById('musicBase');
+            musicHunt = document.getElementById('musicHunt');
+            soundSpin = document.getElementById('soundSpin');
+            soundBigwin = document.getElementById('soundBigwin');
+
+            // Preload images
+            preloadImages();
+        }
+
+        function preloadImages() {
+            const imagesToLoad = [
+                'assets/bg-base.webp?v=1770742140',
+                'assets/bg-hunt.webp',
+                'assets/bigwin.webp',
+                'assets/frame.webp?v=1770742140',
+                ...Object.values(SYMBOLS).map(s => s.img)
+            ];
+
+            // Preload hunt transition video
+            const huntVideo = document.getElementById('huntVideo');
+            if (huntVideo) {
+                huntVideo.load();
+                console.log('[PRELOAD] Hunt video preloading...');
+            }
+
+            // Preload big win video
+            const bigwinVideo = document.getElementById('bigwinVideo');
+            if (bigwinVideo) {
+                bigwinVideo.load();
+                console.log('[PRELOAD] Big win video preloading...');
+            }
+
+            imagesToLoad.forEach(src => {
+                const img = new Image();
+                img.onload = () => {
+                    imagesLoaded++;
+                    updateLoadingBar((imagesLoaded / totalImages) * 80);
+                    if (imagesLoaded >= totalImages) {
+                        finishLoading();
+                    }
+                };
+                img.onerror = () => {
+                    imagesLoaded++;
+                    updateLoadingBar((imagesLoaded / totalImages) * 80);
+                    if (imagesLoaded >= totalImages) {
+                        finishLoading();
+                    }
+                };
+                img.src = src;
+            });
+
+            // Fallback timeout
+            setTimeout(() => {
+                if (imagesLoaded < totalImages) {
+                    finishLoading();
+                }
+            }, 5000);
+        }
+
+        async function finishLoading() {
+            initGrid();
+            initHuntGrid();
+            initRain();
+            updateLoadingBar(90);
+            await initSession();
+            updateLoadingBar(100);
+
+            setTimeout(() => {
+                document.getElementById('loadingScreen').classList.add('hidden');
+            }, 500);
+        }
+
+        function updateLoadingBar(percent) {
+            document.getElementById('loadingBar').style.width = percent + '%';
+        }
+
+        function initGrid() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            gridCells = [];
+
+            // Get all symbol IDs for preloading
+            const symbolIds = Object.keys(SYMBOLS);
+
+            for (let row = 0; row < NUM_ROWS; row++) {
+                gridCells[row] = [];
+                for (let col = 0; col < NUM_REELS; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+
+                    // Preload ALL symbol images in each cell (hidden by default)
+                    symbolIds.forEach(symId => {
+                        const img = document.createElement('img');
+                        img.className = 'symbol-img';
+                        img.dataset.symbol = symId;
+                        img.src = SYMBOLS[symId].img;
+                        img.alt = SYMBOLS[symId].name;
+                        cell.appendChild(img);
+                    });
+
+                    gridCells[row][col] = cell;
+                    grid.appendChild(cell);
+                }
+            }
+        }
+
+        function initHuntGrid() {
+            const grid = document.getElementById('huntGrid');
+            grid.innerHTML = '';
+            huntGridCells = [];
+
+            // Hunt mode uses 5x5 grid
+            for (let row = 0; row < HUNT_ROWS; row++) {
+                huntGridCells[row] = [];
+                for (let col = 0; col < NUM_REELS; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'hunt-cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    huntGridCells[row][col] = cell;
+                    grid.appendChild(cell);
+                }
+            }
+        }
+
+        async function initSession() {
+            try {
+                const response = await fetch(`${API_BASE}/init`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) throw new Error('Init failed');
+
+                const data = await response.json();
+                sessionId = data.session_id;
+                balance = data.balance;
+                rgsConnected = true;
+                updateUI();
+                updateRgsIndicator(true);
+            } catch (err) {
+                console.error('Failed to connect to RGS:', err);
+                sessionId = 'local-' + Date.now();
+                balance = 10000;
+                rgsConnected = false;
+                updateUI();
+                updateRgsIndicator(false);
+            }
+        }
+
+        // =============================================================================
+        // UI UPDATES
+        // =============================================================================
+        function updateUI() {
+            document.getElementById('balanceDisplay').textContent = formatMoney(balance);
+            document.getElementById('betDisplay').textContent = formatMoney(BETS[betIndex]);
+            currentBet = BETS[betIndex];
+        }
+
+        function formatMoney(amount) {
+            return '$' + amount.toFixed(2);
+        }
+
+        function updateRgsIndicator(connected) {
+            const indicator = document.getElementById('rgsIndicator');
+            indicator.classList.toggle('connected', connected);
+            indicator.title = connected ? 'Connected to server' : 'Offline mode';
+        }
+
+        function showWin(amount, isBig = false) {
+            const winDisplay = document.getElementById('winDisplay');
+            const winText = document.getElementById('winText');
+            winDisplay.textContent = formatMoney(amount);
+
+            if (amount > 0) {
+                winText.textContent = 'WIN ' + formatMoney(amount);
+                winText.classList.toggle('big', isBig);
+            } else {
+                winText.textContent = '';
+                winText.classList.remove('big');
+            }
+        }
+
+        function clearWinHighlights() {
+            // Remove all win-related classes
+            document.querySelectorAll('.cell.winning').forEach(cell => {
+                cell.classList.remove('winning');
+            });
+            document.querySelectorAll('.cell.dimmed').forEach(cell => {
+                cell.classList.remove('dimmed');
+            });
+            document.querySelectorAll('.cell.coin-cell').forEach(cell => {
+                cell.classList.remove('coin-cell');
+            });
+            // Remove payline connectors
+            document.querySelectorAll('.payline-connector').forEach(el => el.remove());
+        }
+
+        function highlightWins(wins) {
+            if (!wins || wins.length === 0) return;
+
+            // Collect all winning positions
+            const winningPositions = new Set();
+            wins.forEach(win => {
+                win.positions.forEach(pos => {
+                    winningPositions.add(`${pos[0]},${pos[1]}`);
+                });
+            });
+
+            // Dim all non-winning cells
+            for (let row = 0; row < NUM_ROWS; row++) {
+                for (let col = 0; col < NUM_REELS; col++) {
+                    const key = `${row},${col}`;
+                    if (!winningPositions.has(key)) {
+                        gridCells[row][col].classList.add('dimmed');
+                    }
+                }
+            }
+
+            // Highlight winning cells and draw payline connectors
+            wins.forEach(win => {
+                // Mark winning cells
+                win.positions.forEach(pos => {
+                    const [row, col] = pos;
+                    if (gridCells[row] && gridCells[row][col]) {
+                        gridCells[row][col].classList.add('winning');
+                    }
+                });
+
+                // Draw payline connector line
+                if (win.positions.length >= 2) {
+                    drawPaylineConnector(win.positions);
+                }
+            });
+
+            // Restore all cells after animation completes (1.6s = 0.8s * 2 iterations)
+            setTimeout(() => {
+                document.querySelectorAll('.cell.dimmed').forEach(cell => {
+                    cell.classList.remove('dimmed');
+                });
+                document.querySelectorAll('.cell.winning').forEach(cell => {
+                    cell.classList.remove('winning');
+                });
+                document.querySelectorAll('.payline-connector').forEach(el => el.remove());
+            }, 1800);
+        }
+
+        function drawPaylineConnector(positions) {
+            const gridContainer = document.querySelector('.grid-container');
+            const gridRect = gridContainer.getBoundingClientRect();
+
+            // Create SVG element
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.classList.add('payline-connector');
+            svg.style.position = 'absolute';
+            svg.style.top = '0';
+            svg.style.left = '0';
+            svg.style.width = '100%';
+            svg.style.height = '100%';
+            svg.style.overflow = 'visible';
+
+            // Calculate cell centers and draw lines
+            for (let i = 0; i < positions.length - 1; i++) {
+                const [row1, col1] = positions[i];
+                const [row2, col2] = positions[i + 1];
+
+                const cell1 = gridCells[row1][col1];
+                const cell2 = gridCells[row2][col2];
+
+                const rect1 = cell1.getBoundingClientRect();
+                const rect2 = cell2.getBoundingClientRect();
+
+                // Calculate center points relative to grid container
+                const x1 = (rect1.left + rect1.width / 2) - gridRect.left;
+                const y1 = (rect1.top + rect1.height / 2) - gridRect.top;
+                const x2 = (rect2.left + rect2.width / 2) - gridRect.left;
+                const y2 = (rect2.top + rect2.height / 2) - gridRect.top;
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1);
+                line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2);
+                line.setAttribute('y2', y2);
+                svg.appendChild(line);
+            }
+
+            gridContainer.appendChild(svg);
+        }
+
+        function highlightCoins(coins) {
+            coins.forEach(coin => {
+                const [row, col] = coin.position;
+                if (gridCells[row] && gridCells[row][col]) {
+                    gridCells[row][col].classList.add('coin-cell');
+                }
+            });
+        }
+
+        // =============================================================================
+        // AUDIO
+        // =============================================================================
+        function playMusic(type) {
+            if (!soundEnabled) return;
+
+            musicBase.pause();
+            musicHunt.pause();
+            musicBase.currentTime = 0;
+            musicHunt.currentTime = 0;
+
+            if (type === 'base') {
+                musicBase.volume = 0.3;
+                musicBase.play().catch(() => {});
+            } else if (type === 'hunt') {
+                musicHunt.volume = 0.4;
+                musicHunt.play().catch(() => {});
+            }
+        }
+
+        function stopMusic() {
+            musicBase.pause();
+            musicHunt.pause();
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+
+            if (type === 'spin') {
+                soundSpin.currentTime = 0;
+                soundSpin.volume = 0.5;
+                soundSpin.play().catch(() => {});
+            } else if (type === 'bigwin') {
+                soundBigwin.currentTime = 0;
+                soundBigwin.volume = 0.6;
+                soundBigwin.play().catch(() => {});
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundIcon').textContent = soundEnabled ? '🔊' : '🔇';
+
+            if (soundEnabled) {
+                playMusic('base');
+            } else {
+                stopMusic();
+            }
+        }
+
+        // =============================================================================
+        // GAME CONTROLS
+        // =============================================================================
+        function changeBet(direction) {
+            if (spinning || inHunt) return;
+            betIndex = Math.max(0, Math.min(BETS.length - 1, betIndex + direction));
+            updateUI();
+        }
+
+        // =============================================================================
+        // SPIN LOGIC
+        // =============================================================================
+        async function spin() {
+            if (spinning || inHunt) return;
+
+            const bet = BETS[betIndex];
+            if (balance < bet) {
+                alert('Insufficient balance!');
+                return;
+            }
+
+            spinning = true;
+            document.getElementById('spinBtn').disabled = true;
+            clearWinHighlights();
+            showWin(0);
+            playSound('spin');
+
+            try {
+                if (rgsConnected) {
+                    await spinRGS(bet);
+                } else {
+                    await spinLocal(bet);
+                }
+            } catch (err) {
+                console.error('Spin error:', err);
+            }
+
+            spinning = false;
+            document.getElementById('spinBtn').disabled = false;
+        }
+
+        async function spinRGS(bet) {
+            const response = await fetch(`${API_BASE}/spin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    bet_amount: bet
+                })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || 'Spin failed');
+            }
+
+            const data = await response.json();
+
+            balance = data.balance;
+            updateUI();
+
+            await animateReels(data.screen);
+
+            // Highlight coins
+            if (data.hunt_coins && data.hunt_coins.length > 0) {
+                highlightCoins(data.hunt_coins);
+            }
+
+            // Show wins
+            if (data.wins && data.wins.length > 0) {
+                highlightWins(data.wins);
+            }
+
+            if (data.win > 0) {
+                const isBigWin = data.win >= bet * BIG_WIN_THRESHOLD;
+                showWin(data.win, isBigWin);
+
+                if (isBigWin && !data.trigger_hunt) {
+                    await showBigWin(data.win);
+                }
+            }
+
+            // Check for hunt trigger
+            if (data.trigger_hunt) {
+                await sleep(1000);
+                await playHuntTransition();
+                startHunt(data.hunt_coins);
+            }
+        }
+
+        async function animateReels(screen) {
+            const allSymbolIds = Object.keys(SYMBOLS);
+
+            // Add spinning class
+            gridCells.forEach(row => row.forEach(cell => cell.classList.add('spinning')));
+
+            // Quick spin animation
+            for (let spin = 0; spin < 8; spin++) {
+                for (let col = 0; col < NUM_REELS; col++) {
+                    for (let row = 0; row < NUM_ROWS; row++) {
+                        const randomSym = allSymbolIds[Math.floor(Math.random() * allSymbolIds.length)];
+                        renderSymbol(gridCells[row][col], randomSym);
+                    }
+                }
+                await sleep(40);
+            }
+
+            // Remove spinning class
+            gridCells.forEach(row => row.forEach(cell => cell.classList.remove('spinning')));
+
+            // Reveal final result column by column
+            for (let col = 0; col < NUM_REELS; col++) {
+                for (let row = 0; row < NUM_ROWS; row++) {
+                    const sym = screen[col][row];
+                    renderSymbol(gridCells[row][col], sym);
+                }
+                await sleep(80);
+            }
+        }
+
+        function renderSymbol(cell, symId) {
+            // Hide all symbols in this cell
+            cell.querySelectorAll('.symbol-img').forEach(img => {
+                img.classList.remove('active');
+            });
+
+            // Show only the requested symbol (by data-symbol attribute)
+            const targetImg = cell.querySelector(`.symbol-img[data-symbol="${symId}"]`);
+            if (targetImg) {
+                targetImg.classList.add('active');
+            }
+
+            cell.classList.toggle('coin-cell', symId === 'PRIZE');
+        }
+
+        // =============================================================================
+        // HUNT TRANSITION
+        // =============================================================================
+        async function playHuntTransition() {
+            return new Promise((resolve) => {
+                const overlay = document.getElementById('huntVideoOverlay');
+                const video = document.getElementById('huntVideo');
+
+                console.log('[HUNT] Playing transition video...');
+
+                // Stop base music
+                stopMusic();
+
+                // Show overlay
+                overlay.classList.remove('fade-out');
+                overlay.classList.add('active');
+
+                // Reset video
+                video.currentTime = 0;
+
+                // Try to play
+                const playPromise = video.play();
+
+                if (playPromise) {
+                    playPromise.then(() => {
+                        console.log('[HUNT] Video playing successfully');
+                    }).catch(err => {
+                        console.log('[HUNT] Video autoplay blocked:', err.message);
+                        // Skip video, do simple fade transition instead
+                        overlay.classList.add('fade-out');
+                        setTimeout(() => {
+                            overlay.classList.remove('active', 'fade-out');
+                            resolve();
+                        }, 500);
+                    });
+                }
+
+                // When video ends, fade out
+                video.onended = () => {
+                    console.log('[HUNT] Video ended, fading out...');
+                    overlay.classList.add('fade-out');
+                    setTimeout(() => {
+                        overlay.classList.remove('active', 'fade-out');
+                        video.currentTime = 0; // Reset for next time
+                        resolve();
+                    }, 500);
+                };
+
+                // Fallback timeout (video is ~5 seconds)
+                setTimeout(() => {
+                    if (overlay.classList.contains('active') && !overlay.classList.contains('fade-out')) {
+                        console.log('[HUNT] Transition timeout, forcing completion');
+                        video.pause();
+                        overlay.classList.add('fade-out');
+                        setTimeout(() => {
+                            overlay.classList.remove('active', 'fade-out');
+                            resolve();
+                        }, 500);
+                    }
+                }, 7000);
+            });
+        }
+
+        // =============================================================================
+        // HUNT MODE
+        // =============================================================================
+        function startHunt(initialCoins) {
+            console.log('[HUNT] Starting hunt with', initialCoins.length, 'coins');
+
+            inHunt = true;
+            huntCoins = [...initialCoins]; // Copy array
+            huntTrails = 3;
+            huntTotalWin = 0; // Track running total
+
+            // Clear hunt grid (5x5) - mark empty cells as dimmed
+            for (let row = 0; row < HUNT_ROWS; row++) {
+                for (let col = 0; col < NUM_REELS; col++) {
+                    huntGridCells[row][col].className = 'hunt-cell empty';
+                    huntGridCells[row][col].innerHTML = '';
+                }
+            }
+
+            // Show overlay
+            document.getElementById('huntOverlay').classList.add('active');
+            document.getElementById('gameWrapper').classList.add('hunt-mode');
+
+            // Hide rain during hunt
+            hideRain();
+
+            // Play hunt music
+            playMusic('hunt');
+
+            // Animate initial coins onto the grid
+            animateHuntCoins(initialCoins, true);
+
+            // Calculate initial win value
+            huntCoins.forEach(coin => {
+                huntTotalWin += coin.value * currentBet;
+            });
+
+            // Update display
+            updateHuntDisplay();
+
+            console.log('[HUNT] Initial setup complete. Starting respin loop in 2s...');
+
+            // Start hunt respin loop after delay
+            setTimeout(() => {
+                console.log('[HUNT] Beginning respin loop');
+                runHuntSpin();
+            }, 2000);
+        }
+
+        async function animateHuntCoins(coins, isNew = false) {
+            for (const coin of coins) {
+                const [row, col] = coin.position;
+                const cell = huntGridCells[row][col];
+
+                // Remove empty class, add has-coin
+                cell.classList.remove('empty');
+                cell.classList.add('has-coin');
+
+                if (isNew) {
+                    cell.classList.remove('new-coin');
+                    void cell.offsetWidth; // Force reflow
+                    cell.classList.add('new-coin');
+
+                    // Remove new-coin class after animation
+                    setTimeout(() => {
+                        cell.classList.remove('new-coin');
+                    }, 800);
+                }
+
+                // Add coin image and value centered ON the coin
+                cell.innerHTML = '';
+
+                const img = document.createElement('img');
+                img.className = 'hunt-coin-img';
+                img.src = 'assets/symbols/coin.webp';
+                cell.appendChild(img);
+
+                const valueDiv = document.createElement('div');
+                valueDiv.className = 'hunt-coin-value';
+
+                if (coin.jackpot) {
+                    // Jackpot coin - show name with colored badge
+                    const jpName = coin.jackpot.toUpperCase();
+                    valueDiv.textContent = jpName;
+                    valueDiv.classList.add(`jackpot-${coin.jackpot.toLowerCase()}`);
+                } else {
+                    // Regular coin - show $ value
+                    valueDiv.textContent = formatMoney(coin.value * currentBet);
+                }
+
+                cell.appendChild(valueDiv);
+
+                // Delay between coins for slam effect
+                if (isNew) {
+                    await sleep(150);
+                } else {
+                    await sleep(80);
+                }
+            }
+        }
+
+        function updateHuntDisplay() {
+            document.getElementById('huntTrails').textContent = huntTrails;
+            document.getElementById('huntCoins').textContent = huntCoins.length + '/25';
+            document.getElementById('huntValue').textContent = formatMoney(huntTotalWin);
+
+            // Visual feedback for trails
+            const trailsEl = document.getElementById('huntTrails');
+            trailsEl.style.color = huntTrails === 3 ? '#4CAF50' : (huntTrails === 2 ? '#FFC107' : '#FF5722');
+        }
+
+        async function runHuntSpin() {
+            if (!inHunt) {
+                console.log('[HUNT] runHuntSpin called but not in hunt mode');
+                return;
+            }
+
+            const isLastTrail = huntTrails === 1;
+
+            console.log('='.repeat(50));
+            console.log('[HUNT] === RESPIN START ===');
+            console.log('[HUNT] Trails:', huntTrails, isLastTrail ? '*** LAST CHANCE! ***' : '');
+            console.log('[HUNT] Coins:', huntCoins.length);
+
+            // Last-trail heartbeat effect
+            const trailsStat = document.getElementById('trailsStat');
+            if (isLastTrail) {
+                trailsStat.classList.add('last-trail');
+            } else {
+                trailsStat.classList.remove('last-trail');
+            }
+
+            // Get occupied positions (sticky coins)
+            const occupiedPositions = new Set(huntCoins.map(c => `${c.position[0]},${c.position[1]}`));
+
+            // Check which columns have empty cells
+            const columnsWithEmpty = [];
+            for (let col = 0; col < NUM_REELS; col++) {
+                let hasEmpty = false;
+                for (let row = 0; row < HUNT_ROWS; row++) {
+                    if (!occupiedPositions.has(`${row},${col}`)) {
+                        hasEmpty = true;
+                        break;
+                    }
+                }
+                if (hasEmpty) columnsWithEmpty.push(col);
+            }
+
+            console.log('[HUNT] Columns with empty cells:', columnsWithEmpty);
+
+            // Fetch result from server
+            let data;
+            try {
+                const response = await fetch(`${API_BASE}/hunt-spin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+
+                if (!response.ok) throw new Error('Hunt spin failed');
+                data = await response.json();
+                console.log('[HUNT] New coins from server:', data.new_coins?.length || 0);
+
+            } catch (err) {
+                console.error('[HUNT] Error:', err);
+                if (huntTrails > 0) {
+                    setTimeout(() => runHuntSpin(), 2000);
+                } else {
+                    endHunt(huntTotalWin, false);
+                }
+                return;
+            }
+
+            // Map new coin positions
+            const newCoinPositions = new Map();
+            if (data.new_coins) {
+                data.new_coins.forEach(coin => {
+                    newCoinPositions.set(`${coin.position[0]},${coin.position[1]}`, coin);
+                });
+            }
+
+            // ========== CREATE COLUMN REEL STRIPS ==========
+            const huntGridContainer = document.querySelector('.hunt-grid-container');
+            const huntGrid = document.getElementById('huntGrid');
+            const columnReels = [];
+
+            // Play spin sound
+            playSound('spin');
+
+            // Get grid dimensions for precise alignment
+            // Grid has padding: 4% top, 3% right, 3% bottom, 3% left
+            const gridPaddingLeft = 3;
+            const gridPaddingRight = 3;
+            const gridContentWidth = 100 - gridPaddingLeft - gridPaddingRight; // 94%
+            const columnWidth = gridContentWidth / 5; // ~18.8% per column
+
+            // Create a reel strip for each column with empty cells
+            for (const col of columnsWithEmpty) {
+                const reelContainer = document.createElement('div');
+                reelContainer.className = 'hunt-column-reel';
+
+                // Position exactly over the grid column
+                const colLeft = gridPaddingLeft + (col * columnWidth);
+                reelContainer.style.left = `${colLeft}%`;
+                reelContainer.style.width = `${columnWidth}%`;
+
+                const strip = document.createElement('div');
+                strip.className = 'hunt-reel-strip spinning';
+
+                // Add 15 coins for scrolling - each sized to match grid row height
+                for (let i = 0; i < 15; i++) {
+                    const coinWrapper = document.createElement('div');
+                    coinWrapper.className = 'reel-coin';
+
+                    const img = document.createElement('img');
+                    img.src = 'assets/symbols/coin.webp';
+                    coinWrapper.appendChild(img);
+                    strip.appendChild(coinWrapper);
+                }
+
+                reelContainer.appendChild(strip);
+                huntGridContainer.appendChild(reelContainer);
+                columnReels.push({ col, reelContainer, strip });
+            }
+
+            // ========== STAGGERED COLUMN STOP ==========
+            // First column spins 1s, then each subsequent column stops 500ms later
+            const initialSpinTime = isLastTrail ? 1200 : 1000;
+
+            for (let i = 0; i < columnReels.length; i++) {
+                const { col, reelContainer, strip } = columnReels[i];
+
+                // First column waits full initial time, others wait 500ms after previous
+                const waitTime = (i === 0) ? initialSpinTime : 500;
+                await sleep(waitTime);
+
+                // Stop the reel
+                strip.classList.remove('spinning');
+
+                // Reveal results for this column
+                for (let row = 0; row < HUNT_ROWS; row++) {
+                    const posKey = `${row},${col}`;
+
+                    // Skip if already has sticky coin
+                    if (occupiedPositions.has(posKey)) continue;
+
+                    const coin = newCoinPositions.get(posKey);
+                    const cell = huntGridCells[row][col];
+
+                    if (coin) {
+                        // ===== NEW COIN! =====
+                        console.log(`[HUNT] COIN at [${row},${col}] = ${coin.value}x`);
+
+                        cell.classList.remove('empty', 'reveal-empty');
+                        cell.classList.add('has-coin', 'new-coin');
+
+                        const img = document.createElement('img');
+                        img.className = 'hunt-coin-img';
+                        img.src = 'assets/symbols/coin.webp';
+                        cell.appendChild(img);
+
+                        const valueDiv = document.createElement('div');
+                        valueDiv.className = 'hunt-coin-value';
+                        if (coin.jackpot) {
+                            // Jackpot coin - show name with colored badge
+                            const jpName = coin.jackpot.toUpperCase();
+                            valueDiv.textContent = jpName;
+                            valueDiv.classList.add(`jackpot-${coin.jackpot.toLowerCase()}`);
+                        } else {
+                            // Regular coin - show $ value
+                            valueDiv.textContent = formatMoney(coin.value * currentBet);
+                        }
+                        cell.appendChild(valueDiv);
+
+                        huntCoins.push(coin);
+                        huntTotalWin += coin.value * currentBet;
+                        updateHuntDisplay();
+
+                        // Remove animation class after effect
+                        setTimeout(() => cell.classList.remove('new-coin'), 800);
+
+                    } else {
+                        // Empty cell
+                        cell.classList.add('empty', 'reveal-empty');
+                    }
+                }
+
+                // Remove the reel strip for this column
+                reelContainer.remove();
+
+                // Brief pause between columns
+                await sleep(100);
+            }
+
+            // ========== All columns stopped ==========
+            console.log('[HUNT] All columns revealed');
+            await sleep(800);
+
+            // ========== Update trails ==========
+            const newCoinsCount = data.new_coins ? data.new_coins.length : 0;
+            const trailsEl = document.getElementById('huntTrails');
+
+            trailsEl.classList.remove('flash-green', 'flash-red');
+
+            if (newCoinsCount > 0) {
+                huntTrails = 3;
+                console.log('[HUNT] TRAILS RESET TO 3!');
+
+                trailsStat.classList.remove('last-trail');
+                trailsEl.classList.add('flash-green');
+                trailsEl.style.color = '#4CAF50';
+                updateHuntDisplay();
+                await sleep(600);
+                trailsEl.classList.remove('flash-green');
+
+            } else {
+                huntTrails = huntTrails - 1;
+                console.log('[HUNT] Trails decreased to:', huntTrails);
+
+                trailsEl.classList.add('flash-red');
+                trailsEl.style.color = '#FF5722';
+                updateHuntDisplay();
+                await sleep(600);
+                trailsEl.classList.remove('flash-red');
+            }
+
+            balance = data.balance;
+            updateUI();
+            updateHuntDisplay();
+
+            console.log('[HUNT] Trails:', huntTrails, '| Coins:', huntCoins.length);
+            await sleep(800);
+
+            // ========== Check completion ==========
+            const allFilled = huntCoins.length >= 25;
+            const huntComplete = huntTrails <= 0 || allFilled;
+
+            if (huntComplete) {
+                console.log('[HUNT] === HUNT COMPLETE ===');
+                console.log('[HUNT] Total win:', formatMoney(huntTotalWin));
+                trailsStat.classList.remove('last-trail');
+                await sleep(1000);
+                endHunt(huntTotalWin, allFilled);
+            } else {
+                console.log('[HUNT] Next respin...');
+                await sleep(500);
+                runHuntSpin();
+            }
+        }
+
+        async function endHunt(totalWin, allFilled) {
+            console.log('[HUNT] Ending hunt. Total win:', totalWin, 'All filled:', allFilled);
+
+            inHunt = false;
+
+            // Show big win first (before hiding overlay)
+            if (totalWin > 0) {
+                await showBigWin(totalWin, allFilled ? 'GRAND JACKPOT!' : 'THE HUNT COMPLETE!');
+            }
+
+            // Hide hunt overlay
+            document.getElementById('huntOverlay').classList.remove('active');
+            document.getElementById('gameWrapper').classList.remove('hunt-mode');
+
+            // Show rain again
+            showRain();
+
+            // Switch back to base music
+            playMusic('base');
+
+            // Reset hunt state
+            huntCoins = [];
+            huntTrails = 0;
+            huntTotalWin = 0;
+
+            console.log('[HUNT] Hunt ended, returned to base game');
+        }
+
+        // =============================================================================
+        // BIG WIN DISPLAY
+        // =============================================================================
+        let bigwinVideoLoaded = false;
+
+        function showBigWin(amount, customTitle = null) {
+            return new Promise((resolve) => {
+                playSound('bigwin');
+
+                const overlay = document.getElementById('bigwinOverlay');
+                const titleEl = document.getElementById('bigwinTitle');
+                const amountEl = document.getElementById('bigwinAmount');
+                const videoContainer = document.getElementById('bigwinVideoContainer');
+                const videoPlayer = document.getElementById('bigwinVideoPlayer');
+                const bgImg = document.getElementById('bigwinBgImg');
+
+                // Determine win tier
+                const multiplier = amount / currentBet;
+                let winTitle = 'BIG WIN';
+                let tierClass = '';
+
+                if (customTitle) {
+                    winTitle = customTitle;
+                } else if (multiplier >= 50) {
+                    winTitle = 'EPIC WIN';
+                    tierClass = 'epic-win';
+                } else if (multiplier >= 25) {
+                    winTitle = 'MEGA WIN';
+                    tierClass = 'mega-win';
+                }
+
+                // Reset animations
+                titleEl.classList.remove('animate-in', 'mega-win', 'epic-win');
+                amountEl.classList.remove('animate-in');
+                titleEl.textContent = winTitle;
+                if (tierClass) titleEl.classList.add(tierClass);
+                amountEl.textContent = '$0.00';
+
+                // Try to play video, fallback to image
+                let useVideo = false;
+                const preloadedVideo = document.getElementById('bigwinVideo');
+
+                if (preloadedVideo && preloadedVideo.readyState >= 2) {
+                    // Video is loaded, use it
+                    videoPlayer.src = preloadedVideo.src;
+                    videoPlayer.currentTime = 0;
+                    useVideo = true;
+                }
+
+                if (useVideo) {
+                    bgImg.classList.add('hidden');
+                    videoContainer.classList.add('active');
+
+                    const playPromise = videoPlayer.play();
+                    if (playPromise) {
+                        playPromise.catch(() => {
+                            // Video failed to play, show image instead
+                            console.log('[BIGWIN] Video play failed, using image fallback');
+                            videoContainer.classList.remove('active');
+                            bgImg.classList.remove('hidden');
+                        });
+                    }
+
+                    // When video ends, trigger close
+                    videoPlayer.onended = () => {
+                        closeBigWin();
+                        resolve();
+                    };
+                } else {
+                    // No video, use image
+                    videoContainer.classList.remove('active');
+                    bgImg.classList.remove('hidden');
+                }
+
+                // Show overlay
+                overlay.classList.add('active');
+
+                // Fade in
+                requestAnimationFrame(() => {
+                    overlay.classList.add('visible');
+                });
+
+                // Animate title after short delay
+                setTimeout(() => {
+                    titleEl.classList.add('animate-in');
+                }, 100);
+
+                // Animate amount counter after title pops
+                setTimeout(() => {
+                    amountEl.classList.add('animate-in');
+                    animateCounter(amountEl, 0, amount, 1500);
+                }, 700);
+
+                // Fallback timeout if video doesn't end (or using image)
+                if (!useVideo) {
+                    setTimeout(() => {
+                        closeBigWin();
+                        resolve();
+                    }, 3500);
+                } else {
+                    // Safety timeout for video (max 5 seconds)
+                    setTimeout(() => {
+                        if (overlay.classList.contains('active')) {
+                            videoPlayer.pause();
+                            closeBigWin();
+                            resolve();
+                        }
+                    }, 5000);
+                }
+            });
+        }
+
+        function animateCounter(element, start, end, duration) {
+            const startTime = performance.now();
+
+            function update(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                // Ease out cubic for satisfying slowdown at end
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                const currentValue = start + (end - start) * easeOut;
+
+                element.textContent = formatMoney(currentValue);
+
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                } else {
+                    element.textContent = formatMoney(end);
+                }
+            }
+
+            requestAnimationFrame(update);
+        }
+
+        function closeBigWin() {
+            const overlay = document.getElementById('bigwinOverlay');
+            const videoContainer = document.getElementById('bigwinVideoContainer');
+            const videoPlayer = document.getElementById('bigwinVideoPlayer');
+            const bgImg = document.getElementById('bigwinBgImg');
+
+            overlay.classList.remove('visible');
+
+            // Remove active after fade out
+            setTimeout(() => {
+                overlay.classList.remove('active');
+                videoContainer.classList.remove('active');
+                bgImg.classList.remove('hidden');
+                videoPlayer.pause();
+                videoPlayer.currentTime = 0;
+
+                const titleEl = document.getElementById('bigwinTitle');
+                const amountEl = document.getElementById('bigwinAmount');
+                titleEl.classList.remove('animate-in', 'mega-win', 'epic-win');
+                amountEl.classList.remove('animate-in');
+            }, 500);
+        }
+
+        // =============================================================================
+        // LOCAL FALLBACK
+        // =============================================================================
+        async function spinLocal(bet) {
+            balance -= bet;
+            updateUI();
+
+            const screen = [];
+            const allSymbols = Object.keys(SYMBOLS);
+
+            for (let col = 0; col < NUM_REELS; col++) {
+                screen[col] = [];
+                for (let row = 0; row < NUM_ROWS; row++) {
+                    const sym = allSymbols[Math.floor(Math.random() * allSymbols.length)];
+                    screen[col][row] = sym;
+                }
+            }
+
+            await animateReels(screen);
+        }
+
+        // =============================================================================
+        // RAIN EFFECT
+        // =============================================================================
+        function initRain() {
+            const rainContainer = document.getElementById('rainContainer');
+            const dropCount = 45;
+
+            for (let i = 0; i < dropCount; i++) {
+                const drop = document.createElement('div');
+                drop.className = 'raindrop';
+
+                // Randomize properties
+                const left = Math.random() * 100;
+                const height = 15 + Math.random() * 10; // 15-25px
+                const duration = 0.8 + Math.random() * 0.7; // 0.8-1.5s
+                const delay = Math.random() * 2; // 0-2s delay
+
+                drop.style.left = `${left}%`;
+                drop.style.height = `${height}px`;
+                drop.style.animationDuration = `${duration}s`;
+                drop.style.animationDelay = `${delay}s`;
+
+                rainContainer.appendChild(drop);
+            }
+        }
+
+        function showRain() {
+            const rainContainer = document.getElementById('rainContainer');
+            rainContainer.classList.remove('hidden');
+        }
+
+        function hideRain() {
+            const rainContainer = document.getElementById('rainContainer');
+            rainContainer.classList.add('hidden');
+        }
+
+        // =============================================================================
+        // UTILITIES
+        // =============================================================================
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // =============================================================================
+        // START GAME
+        // =============================================================================
+        window.addEventListener('load', init);
+
+        // Keyboard support
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !spinning && !inHunt) {
+                e.preventDefault();
+                spin();
+            }
+            // Hidden test shortcut: Press 'H' to force-trigger The Hunt
+            if (e.code === 'KeyH' && !spinning && !inHunt) {
+                e.preventDefault();
+                forceHuntTrigger();
+            }
+        });
+
+        // Test function: Force-trigger The Hunt via server endpoint
+        async function forceHuntTrigger() {
+            if (spinning || inHunt) return;
+
+            console.log('[TEST] Force-triggering The Hunt via /force-hunt...');
+
+            try {
+                const response = await fetch(`${API_BASE}/force-hunt`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        bet_amount: currentBet
+                    })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    console.error('[TEST] Force hunt failed:', err.detail);
+                    alert('Force hunt failed: ' + err.detail);
+                    return;
+                }
+
+                const data = await response.json();
+                console.log('[TEST] Hunt triggered with coins:', data.hunt_coins);
+
+                // Show coins on the base grid briefly
+                data.hunt_coins.forEach(coin => {
+                    const [row, col] = coin.position;
+                    if (row < NUM_ROWS) { // Only show if within 5x3 grid
+                        renderSymbol(gridCells[row][col], 'PRIZE');
+                    }
+                });
+
+                // Play transition video and start hunt
+                await sleep(500);
+                await playHuntTransition();
+                startHunt(data.hunt_coins);
+
+            } catch (err) {
+                console.error('[TEST] Force hunt error:', err);
+                alert('Force hunt error: ' + err.message);
+            }
+        }
+    </script>
+</body>
+</html>
