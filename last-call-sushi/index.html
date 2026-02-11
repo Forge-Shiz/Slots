@@ -1,0 +1,1724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Last Call Sushi - Megaways Slot</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+
+  :root {
+    --accent: #ff1493;
+    --gold: #ffd93d;
+    --green: #6bcb77;
+    --cyan: #00ffff;
+    --dark: #0d0d0d;
+    --panel: rgba(0,0,0,0.75);
+    --border: rgba(255,255,255,0.15);
+    --neon-pink: #ff1493;
+    --neon-blue: #00bfff;
+  }
+
+  body {
+    background: #000;
+    color: #fff;
+    font-family: 'Nunito', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* Loading Screen */
+  .loading-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: linear-gradient(180deg, #0a0a0f 0%, #1a1a2e 50%, #0a0a0f 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    transition: opacity 0.5s ease-out;
+  }
+  .loading-screen.fade-out {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .loading-screen.hidden { display: none; }
+  .loading-logo {
+    width: 320px;
+    max-width: 80%;
+    height: auto;
+    filter: drop-shadow(0 0 20px rgba(255,20,147,0.8))
+            drop-shadow(0 0 40px rgba(255,20,147,0.5));
+    animation: logo-pulse 2s ease-in-out infinite;
+  }
+  @keyframes logo-pulse {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(255,20,147,0.8)); }
+    50% { transform: scale(1.02); filter: drop-shadow(0 0 30px rgba(255,20,147,1)); }
+  }
+  .loading-bar-container {
+    width: 280px;
+    max-width: 80%;
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .loading-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--neon-pink), var(--neon-blue), var(--neon-pink));
+    background-size: 200% 100%;
+    border-radius: 2px;
+    animation: loading-shimmer 1s ease-in-out infinite;
+    transition: width 0.3s ease-out;
+  }
+  @keyframes loading-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .loading-status {
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Game Wrapper */
+  .game-wrapper {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Allow conveyor animation to extend past wrapper bounds
+       Body overflow:hidden will still prevent scrollbars */
+    overflow: visible;
+    z-index: 0;
+  }
+
+  /* Video Background */
+  .bg-video {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+    filter: brightness(0.6) saturate(1.2);
+  }
+
+  /* Game Container */
+  .game-container {
+    position: relative;
+    z-index: 1;
+    width: 95%;
+    max-width: 1200px;
+    height: 90vh;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    /* Allow horizontal overflow for conveyor animation */
+    overflow-x: visible;
+    overflow-y: visible;
+  }
+
+  /* Top Bar - banner as img, natural aspect ratio, centered over grid */
+  .top-bar {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    z-index: 10;  /* Banner on top of lantern */
+  }
+  .banner-img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+  }
+  /* Logo - positioned at 23.5% from left, vertically centered */
+  .logo-small {
+    position: absolute;
+    left: 23.5%;
+    top: 55%;  /* Slightly below center to account for visual weight */
+    transform: translate(-50%, -50%);
+    height: 130%;  /* Bigger than banner, overlaps edges */
+    max-height: 140px;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+    z-index: 2;
+  }
+  /* WAYS display - centered at 50%, vertically centered */
+  .ways-display {
+    position: absolute;
+    left: 50%;
+    top: 55%;  /* Move down to vertical center */
+    transform: translate(-50%, -50%);
+    text-align: center;
+    font-family: 'Lilita One', cursive;
+    font-size: 1.8rem;
+    color: #2d1810;  /* Dark brown for contrast */
+    text-shadow: 0 1px 2px rgba(255,255,255,0.5);
+  }
+  .ways-display .ways-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #4a2c1a;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: -2px;
+  }
+  /* Balance display - positioned at 76% from left, vertically centered */
+  .balance-display {
+    position: absolute;
+    left: 76%;
+    top: 55%;  /* Move down to vertical center */
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .balance-display .label {
+    display: block;
+    font-size: 0.7rem;
+    color: #4a2c1a;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: -2px;
+  }
+  .balance-display .value {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.6rem;
+    color: #2d1810;  /* Dark brown */
+    text-shadow: 0 1px 2px rgba(255,255,255,0.5);
+  }
+  /* Free spins counter - positioned at far right */
+  .free-spins-display {
+    display: none;
+    position: absolute;
+    right: 2%;
+    top: 50%;
+    transform: translateY(-50%);
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: linear-gradient(90deg, rgba(255,20,147,0.5), rgba(255,100,50,0.5));
+    border-radius: 16px;
+    border: 2px solid var(--gold);
+  }
+  .free-spins-display.active { display: flex; }
+  .free-spins-display .fs-label {
+    font-size: 0.65rem;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+  }
+  .free-spins-display .fs-count {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.2rem;
+    color: var(--gold);
+    text-shadow: 0 0 8px rgba(255,217,61,0.8);
+  }
+
+  /* Music Toggle Button */
+  .music-toggle {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid rgba(0,0,0,0.3);
+    background: rgba(255,255,255,0.8);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    z-index: 5;
+    transition: all 0.2s ease;
+  }
+  .music-toggle:hover {
+    background: rgba(255,255,255,1);
+    transform: scale(1.1);
+  }
+  .music-toggle.muted {
+    opacity: 0.6;
+  }
+
+  /* Main Grid Area */
+  .grid-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+    /* Position relative for lantern absolute positioning */
+    position: relative;
+    /* Allow conveyor animation overflow */
+    overflow: visible;
+    /* Top padding for lantern body hanging below banner */
+    padding-top: 70px;
+  }
+
+  /* Multiplier Lantern - hangs from BEHIND the banner, body visible below */
+  .lantern-container {
+    position: absolute;
+    top: -30px;  /* Position so lantern body is fully visible below banner */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;  /* 80-100px as requested */
+    height: 97px;  /* Proportional to 1001x975 */
+    z-index: 5;  /* BEHIND the banner (banner is z-index: 10) */
+    pointer-events: none;
+  }
+  .lantern-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: opacity 0.3s ease;
+  }
+  .lantern-glow {
+    opacity: 0;
+  }
+  /* Multiplier text in center of lantern body (lower half of image) */
+  .multiplier-display {
+    position: absolute;
+    top: 58%;  /* Slightly below center - in the lantern body */
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Lilita One', cursive;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #2d1810;  /* Dark brown */
+    text-shadow: 0 1px 2px rgba(255,255,255,0.5);
+    z-index: 2;
+    transition: all 0.3s ease;
+  }
+  .multiplier-display.boosted {
+    animation: mult-boost 0.4s ease-out;
+  }
+  @keyframes mult-boost {
+    0% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.4); color: #ff6b35; }
+    100% { transform: translate(-50%, -50%) scale(1); }
+  }
+  /* Lantern states */
+  /* x1-x3: Normal */
+  .lantern-container.lantern-normal .lantern-base { opacity: 1; }
+  .lantern-container.lantern-normal .lantern-glow { opacity: 0; }
+  /* x4-x7: Subtle pulse */
+  .lantern-container.lantern-pulse {
+    animation: lantern-pulse 2s ease-in-out infinite;
+  }
+  .lantern-container.lantern-pulse .lantern-base { opacity: 1; }
+  .lantern-container.lantern-pulse .lantern-glow { opacity: 0; }
+  @keyframes lantern-pulse {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.06); }
+  }
+  /* x8+: Glow state with faster pulse */
+  .lantern-container.lantern-intense {
+    animation: lantern-intense-pulse 1s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px rgba(255, 150, 50, 0.9))
+            drop-shadow(0 0 40px rgba(255, 100, 0, 0.6));
+  }
+  .lantern-container.lantern-intense .lantern-base { opacity: 0; }
+  .lantern-container.lantern-intense .lantern-glow { opacity: 1; }
+  .lantern-container.lantern-intense .multiplier-display {
+    color: #ff4500;
+    text-shadow: 0 0 12px rgba(255, 200, 100, 0.9);
+  }
+  @keyframes lantern-intense-pulse {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.1); }
+  }
+
+  /* Megaways Grid - CSS Neon Glow Effect */
+  .megaways-grid {
+    flex: 1;
+    position: relative;
+    display: flex;
+    gap: 6px;
+    padding: 16px;
+    min-height: 0;
+    /* Semi-transparent dark background for contrast */
+    background: rgba(0, 0, 0, 0.6);
+    /* Rounded corners */
+    border-radius: 8px;
+    /* Neon border */
+    border: 2px solid rgba(255, 100, 180, 0.8);
+    /* Layered neon glow */
+    box-shadow:
+      0 0 8px rgba(255, 100, 180, 0.6),
+      0 0 20px rgba(255, 100, 180, 0.3),
+      0 0 40px rgba(255, 100, 180, 0.15),
+      inset 0 0 8px rgba(255, 100, 180, 0.1);
+    /* Breathing pulse animation */
+    animation: neonPulse 3s ease-in-out infinite;
+    /* Allow reels to animate outside bounds during conveyor */
+    overflow: visible;
+  }
+
+  /* Default pink neon pulse animation */
+  @keyframes neonPulse {
+    0%, 100% {
+      box-shadow:
+        0 0 8px rgba(255, 100, 180, 0.6),
+        0 0 20px rgba(255, 100, 180, 0.3),
+        0 0 40px rgba(255, 100, 180, 0.15),
+        inset 0 0 8px rgba(255, 100, 180, 0.1);
+      border-color: rgba(255, 100, 180, 0.8);
+    }
+    50% {
+      box-shadow:
+        0 0 12px rgba(255, 100, 180, 0.8),
+        0 0 30px rgba(255, 100, 180, 0.4),
+        0 0 60px rgba(255, 100, 180, 0.2),
+        inset 0 0 12px rgba(255, 100, 180, 0.15);
+      border-color: rgba(255, 100, 180, 1);
+    }
+  }
+
+  /* Blue flicker state */
+  .megaways-grid.neon-flicker {
+    border-color: rgba(0, 200, 255, 0.9) !important;
+    box-shadow:
+      0 0 12px rgba(0, 200, 255, 0.8),
+      0 0 30px rgba(0, 200, 255, 0.5),
+      0 0 60px rgba(0, 200, 255, 0.25),
+      inset 0 0 12px rgba(0, 200, 255, 0.15) !important;
+    animation: none !important;
+  }
+
+  /* Free spins mode - orange/gold neon */
+  .megaways-grid.neon-freespins {
+    border-color: rgba(255, 180, 50, 0.8);
+    animation: neonPulseOrange 3s ease-in-out infinite;
+  }
+  @keyframes neonPulseOrange {
+    0%, 100% {
+      box-shadow:
+        0 0 8px rgba(255, 180, 50, 0.6),
+        0 0 20px rgba(255, 180, 50, 0.3),
+        0 0 40px rgba(255, 180, 50, 0.15),
+        inset 0 0 8px rgba(255, 180, 50, 0.1);
+      border-color: rgba(255, 180, 50, 0.8);
+    }
+    50% {
+      box-shadow:
+        0 0 12px rgba(255, 180, 50, 0.8),
+        0 0 30px rgba(255, 180, 50, 0.4),
+        0 0 60px rgba(255, 180, 50, 0.2),
+        inset 0 0 12px rgba(255, 180, 50, 0.15);
+      border-color: rgba(255, 180, 50, 1);
+    }
+  }
+
+  /* Big win mode - intense glow, faster pulse */
+  .megaways-grid.neon-bigwin {
+    animation: neonPulseBigWin 1.5s ease-in-out infinite;
+  }
+  @keyframes neonPulseBigWin {
+    0%, 100% {
+      box-shadow:
+        0 0 15px rgba(255, 100, 180, 0.8),
+        0 0 35px rgba(255, 100, 180, 0.5),
+        0 0 70px rgba(255, 100, 180, 0.3),
+        inset 0 0 15px rgba(255, 100, 180, 0.2);
+      border-color: rgba(255, 100, 180, 1);
+    }
+    50% {
+      box-shadow:
+        0 0 20px rgba(255, 100, 180, 1),
+        0 0 50px rgba(255, 100, 180, 0.6),
+        0 0 100px rgba(255, 100, 180, 0.4),
+        inset 0 0 20px rgba(255, 100, 180, 0.25);
+      border-color: rgba(255, 255, 255, 1);
+    }
+  }
+
+  /* Big win during free spins - orange intense */
+  .megaways-grid.neon-freespins.neon-bigwin {
+    animation: neonPulseBigWinOrange 1.5s ease-in-out infinite;
+  }
+  @keyframes neonPulseBigWinOrange {
+    0%, 100% {
+      box-shadow:
+        0 0 15px rgba(255, 180, 50, 0.8),
+        0 0 35px rgba(255, 180, 50, 0.5),
+        0 0 70px rgba(255, 180, 50, 0.3),
+        inset 0 0 15px rgba(255, 180, 50, 0.2);
+      border-color: rgba(255, 180, 50, 1);
+    }
+    50% {
+      box-shadow:
+        0 0 20px rgba(255, 180, 50, 1),
+        0 0 50px rgba(255, 180, 50, 0.6),
+        0 0 100px rgba(255, 180, 50, 0.4),
+        inset 0 0 20px rgba(255, 180, 50, 0.25);
+      border-color: rgba(255, 255, 255, 1);
+    }
+  }
+
+  /* Drunk-o-meter effects - apply to grid container for wobble */
+  .megaways-grid.drunk-1 {
+    animation: drunk-wobble-light 4s ease-in-out infinite;
+  }
+  .megaways-grid.drunk-2 {
+    animation: drunk-wobble 3s ease-in-out infinite;
+  }
+  .megaways-grid.drunk-3 {
+    animation: drunk-wobble 2s ease-in-out infinite;
+    filter: saturate(1.2) contrast(1.05);
+  }
+  @keyframes drunk-wobble-light {
+    0%, 100% { transform: rotate(0deg) translateX(0); }
+    25% { transform: rotate(0.15deg) translateX(1px); }
+    50% { transform: rotate(-0.1deg) translateX(-0.5px); }
+    75% { transform: rotate(0.1deg) translateX(0.5px); }
+  }
+  @keyframes drunk-wobble {
+    0%, 100% { transform: rotate(0deg) translateX(0); }
+    25% { transform: rotate(0.3deg) translateX(2px); }
+    50% { transform: rotate(-0.2deg) translateX(-1px); }
+    75% { transform: rotate(0.2deg) translateX(1px); }
+  }
+
+  /* Reel columns */
+  .reel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;  /* Gap between cells to see individual bamboo trays */
+    min-width: 0;
+    position: relative;
+  }
+
+  /* Symbol cells - bamboo tray background */
+  .cell {
+    flex: 1;
+    min-height: 0;
+    /* Bamboo tray as cell background */
+    background-image: url('assets/tray.webp?v=2');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    /* Subtle shadow for depth - each tray is a separate plate */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  .cell .symbol-img {
+    width: 85%;
+    height: 85%;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    /* Symbol sits on top of tray with slight drop shadow */
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+  }
+
+  /* Conveyor belt EXIT animation - old symbols slide off to the right (fast)
+     Uses viewport units to truly go off-screen */
+  .reel.conveyor-exit {
+    animation: reel-exit 0.2s ease-in forwards;
+  }
+  @keyframes reel-exit {
+    0% { transform: translateX(0); opacity: 1; }
+    100% { transform: translateX(100vw); opacity: 0; }
+  }
+
+  /* Pre-position reels off-screen to the left before entry */
+  .reel.conveyor-ready {
+    transform: translateX(-100vw);
+    opacity: 1;
+  }
+
+  /* Conveyor belt ENTER - transition-based slide in from left
+     Uses transition (not animation) so we can force reflow between states */
+  .reel.conveyor-enter {
+    transform: translateX(0);
+    opacity: 1;
+    transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  /* Stagger reel entry by column using transition-delay */
+  .reel:nth-child(1).conveyor-enter { transition-delay: 0.00s; }
+  .reel:nth-child(2).conveyor-enter { transition-delay: 0.08s; }
+  .reel:nth-child(3).conveyor-enter { transition-delay: 0.16s; }
+  .reel:nth-child(4).conveyor-enter { transition-delay: 0.24s; }
+  .reel:nth-child(5).conveyor-enter { transition-delay: 0.32s; }
+  .reel:nth-child(6).conveyor-enter { transition-delay: 0.40s; }
+
+  /* Win highlight - golden glow around the tray */
+  .cell.winning {
+    box-shadow: 0 0 20px rgba(255,217,61,0.8),
+                0 0 40px rgba(255,217,61,0.5),
+                inset 0 0 20px rgba(255,217,61,0.3);
+    animation: win-pulse 0.5s ease-in-out infinite alternate;
+    transform: scale(1.02);
+  }
+  .cell.winning .symbol-img {
+    filter: drop-shadow(0 0 10px rgba(255,217,61,0.8)) brightness(1.1);
+  }
+  @keyframes win-pulse {
+    0% { box-shadow: 0 0 20px rgba(255,217,61,0.8), 0 0 40px rgba(255,217,61,0.5); }
+    100% { box-shadow: 0 0 30px rgba(255,217,61,1), 0 0 60px rgba(255,217,61,0.7); }
+  }
+
+  /* Explode animation */
+  .cell.exploding .symbol-img {
+    animation: symbol-explode 0.4s ease-out forwards;
+  }
+  @keyframes symbol-explode {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.8; }
+    100% { transform: scale(0); opacity: 0; }
+  }
+
+  /* Drop animation */
+  .cell.dropping .symbol-img {
+    animation: symbol-drop 0.35s ease-out forwards;
+  }
+  @keyframes symbol-drop {
+    0% { transform: translateY(-100%); opacity: 0.5; }
+    70% { transform: translateY(8%); }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  /* Scatter glow - pink/blue neon pulse */
+  .cell.scatter-glow {
+    animation: scatter-pulse 0.6s ease-in-out infinite;
+    transform: scale(1.05);
+  }
+  .cell.scatter-glow .symbol-img {
+    filter: drop-shadow(0 0 15px rgba(255,20,147,1)) brightness(1.2);
+  }
+  @keyframes scatter-pulse {
+    0%, 100% { box-shadow: 0 0 15px rgba(255,20,147,0.6), 0 0 30px rgba(0,191,255,0.3); }
+    50% { box-shadow: 0 0 40px rgba(255,20,147,1), 0 0 70px rgba(0,191,255,0.6); }
+  }
+
+  /* Bottom Dock */
+  .dock {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: var(--panel);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    backdrop-filter: blur(10px);
+  }
+
+  /* Bet Controls */
+  .bet-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .bet-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .bet-btn:hover {
+    background: rgba(255,255,255,0.2);
+    border-color: var(--cyan);
+  }
+  .bet-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+  .bet-amount {
+    min-width: 80px;
+    text-align: center;
+  }
+  .bet-amount .label {
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+  }
+  .bet-amount .value {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.3rem;
+    color: #fff;
+  }
+
+  /* Win Display */
+  .win-display {
+    text-align: center;
+    min-width: 120px;
+  }
+  .win-display .label {
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+  }
+  .win-display .value {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.8rem;
+    color: var(--green);
+    text-shadow: 0 0 15px rgba(107,203,119,0.6);
+    transition: all 0.3s ease;
+  }
+  .win-display .value.big-win {
+    animation: big-win 0.5s ease-out;
+    color: var(--gold);
+    text-shadow: 0 0 20px rgba(255,217,61,0.8);
+  }
+  @keyframes big-win {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.5); }
+    100% { transform: scale(1); }
+  }
+
+  /* Spin Button */
+  .spin-btn {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 4px solid var(--neon-pink);
+    background: linear-gradient(180deg, #2a1030 0%, #1a0820 100%);
+    color: #fff;
+    font-family: 'Lilita One', cursive;
+    font-size: 1.3rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 20px rgba(255,20,147,0.5),
+                inset 0 0 20px rgba(255,20,147,0.2);
+    position: relative;
+    overflow: hidden;
+  }
+  .spin-btn::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, var(--neon-pink), var(--neon-blue), var(--neon-pink));
+    z-index: -1;
+    animation: spin-glow 3s linear infinite;
+  }
+  @keyframes spin-glow {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .spin-btn:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 0 30px rgba(255,20,147,0.8);
+  }
+  .spin-btn:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+  .spin-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .spin-btn.spinning {
+    animation: spin-pulse 0.5s ease-in-out infinite;
+  }
+  @keyframes spin-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(0.95); }
+  }
+
+  /* Free Spins Overlay */
+  .fs-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .fs-overlay.active { display: flex; }
+  .fs-overlay h1 {
+    font-family: 'Lilita One', cursive;
+    font-size: 4rem;
+    color: var(--neon-pink);
+    text-shadow: 0 0 30px var(--neon-pink), 0 0 60px var(--neon-blue);
+    animation: fs-title 1s ease-out;
+  }
+  @keyframes fs-title {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .fs-overlay .fs-amount {
+    font-family: 'Lilita One', cursive;
+    font-size: 6rem;
+    color: var(--gold);
+    text-shadow: 0 0 40px rgba(255,217,61,0.8);
+    animation: fs-count-up 1s ease-out 0.5s both;
+  }
+  @keyframes fs-count-up {
+    0% { transform: translateY(50px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  /* Debug Panel */
+  .debug-panel {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.9);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    color: #0f0;
+    font-family: monospace;
+    max-width: 300px;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+    z-index: 200;
+  }
+  .debug-panel.active { display: block; }
+
+  /* RGS Status */
+  .rgs-status {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    z-index: 50;
+  }
+  .rgs-status.connected {
+    background: rgba(107,203,119,0.3);
+    color: var(--green);
+    border: 1px solid var(--green);
+  }
+  .rgs-status.disconnected {
+    background: rgba(255,61,90,0.3);
+    color: #ff3d5a;
+    border: 1px solid #ff3d5a;
+  }
+
+  /* Mobile adjustments */
+  @media (max-width: 768px) {
+    .top-bar { padding: 6px 10px; }
+    .logo-small { height: 35px; }
+    .ways-display { font-size: 1rem; }
+    .balance-display .value { font-size: 1.2rem; }
+    .multiplier-display { font-size: 1.5rem; }
+    .dock { padding: 8px 12px; }
+    .spin-btn { width: 70px; height: 70px; font-size: 1rem; }
+    .bet-btn { width: 30px; height: 30px; }
+    .win-display .value { font-size: 1.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div class="loading-screen" id="loadingScreen">
+  <img src="assets/logo.webp?v=2" alt="Last Call Sushi" class="loading-logo">
+  <div class="loading-bar-container">
+    <div class="loading-bar" id="loadingBar"></div>
+  </div>
+  <div class="loading-status" id="loadingStatus">Initializing...</div>
+</div>
+
+<!-- RGS Status -->
+<div class="rgs-status disconnected" id="rgsStatus">Connecting...</div>
+
+<!-- Game -->
+<div class="game-wrapper">
+  <!-- Video Background -->
+  <video class="bg-video" autoplay muted loop playsinline id="bgVideo">
+    <source src="assets/bck.mp4?v=2" type="video/mp4">
+  </video>
+
+  <div class="game-container">
+    <!-- Top Bar - Banner image with positioned elements -->
+    <div class="top-bar">
+      <img src="assets/banner.webp?v=2" alt="" class="banner-img">
+      <img src="assets/logo.webp?v=2" alt="Logo" class="logo-small">
+      <div class="ways-display">
+        <span class="ways-label">WAYS</span>
+        <span id="waysCount">117,649</span>
+      </div>
+      <div class="balance-display">
+        <span class="label">Balance</span>
+        <span class="value" id="balanceDisplay">$10,000.00</span>
+      </div>
+      <div class="free-spins-display" id="freeSpinsDisplay">
+        <span class="fs-label">FREE SPINS</span>
+        <span class="fs-count" id="freeSpinsCount">0</span>
+      </div>
+      <button class="music-toggle" id="musicToggle" title="Toggle Music">🔊</button>
+    </div>
+
+    <!-- Background Music -->
+    <audio id="bgMusic" loop preload="auto">
+      <source src="assets/base.mp3?v=2" type="audio/mpeg">
+    </audio>
+
+    <!-- Sound Effects -->
+    <audio id="sfxSpin" preload="auto">
+      <source src="assets/spin.mp3?v=2" type="audio/mpeg">
+    </audio>
+    <audio id="sfxFall" preload="auto">
+      <source src="assets/fall.mp3?v=2" type="audio/mpeg">
+    </audio>
+    <audio id="sfxPlop" preload="auto">
+      <source src="assets/plop.mp3?v=2" type="audio/mpeg">
+    </audio>
+
+    <!-- Grid Wrapper -->
+    <div class="grid-wrapper">
+      <!-- Multiplier Lantern - hangs from top -->
+      <div class="lantern-container lantern-normal" id="lanternContainer">
+        <img src="assets/lantern.webp?v=2" alt="" class="lantern-img lantern-base">
+        <img src="assets/lanternglow.webp?v=2" alt="" class="lantern-img lantern-glow">
+        <div class="multiplier-display" id="multiplierDisplay">x1</div>
+      </div>
+
+      <!-- Megaways Grid with CSS Neon Glow -->
+      <div class="megaways-grid" id="megawaysGrid">
+        <!-- 6 reels will be generated by JS -->
+      </div>
+    </div>
+
+    <!-- Bottom Dock -->
+    <div class="dock">
+      <div class="bet-controls">
+        <button class="bet-btn" id="betDown" onclick="changeBet(-1)">-</button>
+        <div class="bet-amount">
+          <div class="label">Bet</div>
+          <div class="value" id="betDisplay">$1.00</div>
+        </div>
+        <button class="bet-btn" id="betUp" onclick="changeBet(1)">+</button>
+      </div>
+
+      <div class="win-display">
+        <div class="label">Win</div>
+        <div class="value" id="winDisplay">$0.00</div>
+      </div>
+
+      <button class="spin-btn" id="spinBtn" onclick="spin()">SPIN</button>
+    </div>
+  </div>
+</div>
+
+<!-- Free Spins Overlay -->
+<div class="fs-overlay" id="fsOverlay">
+  <h1>FREE SPINS!</h1>
+  <div class="fs-amount" id="fsAmount">12</div>
+</div>
+
+<!-- Debug Panel -->
+<div class="debug-panel" id="debugPanel"></div>
+
+<script>
+// Configuration
+const RGS_API_BASE = '/api/sushi';
+const BETS = [0.20, 0.50, 1.00, 2.00, 5.00, 10.00, 20.00, 50.00, 100.00];
+const DEBUG = new URLSearchParams(window.location.search).has('debug');
+
+// Symbol mapping (with cache-busting v=2 for new kawaii art)
+const SYMBOLS = {
+  H1: { name: 'Otoro', file: 'assets/sym_h1_otoro.webp?v=2' },
+  H2: { name: 'Salmon', file: 'assets/sym_h2_salmon.webp?v=2' },
+  H3: { name: 'Uni', file: 'assets/sym_h3_uni.webp?v=2' },
+  H4: { name: 'Dragon Roll', file: 'assets/sym_h4_dragon.webp?v=2' },
+  H5: { name: 'Shrimp', file: 'assets/sym_h5_shrimp.webp?v=2' },
+  L1: { name: 'Edamame', file: 'assets/sym_l1_edamame.webp?v=2' },
+  L2: { name: 'Gyoza', file: 'assets/sym_l2_gyoza.webp?v=2' },
+  L3: { name: 'Tamago', file: 'assets/sym_l3_tamago.webp?v=2' },
+  L4: { name: 'Cucumber', file: 'assets/sym_l4_cucumber.webp?v=2' },
+  W:  { name: 'Sake', file: 'assets/sym_w_sake.webp?v=2' },
+  S:  { name: 'Scatter', file: 'assets/sym_s_neonpink.webp?v=2' },
+};
+
+// State
+let rgsSessionId = null;
+let rgsConnected = false;
+let balance = 10000;
+let betIndex = 2;  // $1.00
+let spinning = false;
+let inFreeSpins = false;
+let freeSpinsRemaining = 0;
+let currentMultiplier = 1;
+let totalSpinWin = 0;
+let currentReelHeights = [5, 5, 5, 5, 5, 5];
+let currentBoard = [];
+
+// DOM Elements
+const elements = {
+  loadingScreen: document.getElementById('loadingScreen'),
+  loadingBar: document.getElementById('loadingBar'),
+  loadingStatus: document.getElementById('loadingStatus'),
+  rgsStatus: document.getElementById('rgsStatus'),
+  waysCount: document.getElementById('waysCount'),
+  balanceDisplay: document.getElementById('balanceDisplay'),
+  betDisplay: document.getElementById('betDisplay'),
+  winDisplay: document.getElementById('winDisplay'),
+  multiplierDisplay: document.getElementById('multiplierDisplay'),
+  megawaysGrid: document.getElementById('megawaysGrid'),
+  spinBtn: document.getElementById('spinBtn'),
+  freeSpinsDisplay: document.getElementById('freeSpinsDisplay'),
+  freeSpinsCount: document.getElementById('freeSpinsCount'),
+  fsOverlay: document.getElementById('fsOverlay'),
+  fsAmount: document.getElementById('fsAmount'),
+  lanternContainer: document.getElementById('lanternContainer'),
+  debugPanel: document.getElementById('debugPanel'),
+  bgMusic: document.getElementById('bgMusic'),
+  musicToggle: document.getElementById('musicToggle'),
+  sfxSpin: document.getElementById('sfxSpin'),
+  sfxFall: document.getElementById('sfxFall'),
+  sfxPlop: document.getElementById('sfxPlop'),
+};
+
+// Neon glow state
+let neonFlickerTimer = null;
+
+// Initialize
+async function init() {
+  updateLoadingProgress(10, 'Loading assets...');
+
+  // Preload images
+  await preloadImages();
+  updateLoadingProgress(50, 'Connecting to server...');
+
+  // Connect to RGS
+  await initRgsSession();
+  updateLoadingProgress(80, 'Setting up game...');
+
+  // Initialize grid
+  initGrid();
+
+  // Initialize CSS neon glow effects
+  initNeonGlow();
+
+  // Initialize background music
+  initMusic();
+
+  updateUI();
+
+  if (DEBUG) {
+    elements.debugPanel.classList.add('active');
+  }
+
+  updateLoadingProgress(100, 'Ready!');
+
+  // Hide loading screen
+  setTimeout(() => {
+    elements.loadingScreen.classList.add('fade-out');
+    setTimeout(() => elements.loadingScreen.classList.add('hidden'), 500);
+  }, 500);
+}
+
+function updateLoadingProgress(percent, status) {
+  elements.loadingBar.style.width = percent + '%';
+  elements.loadingStatus.textContent = status;
+}
+
+async function preloadImages() {
+  // Preload symbol images
+  const symbolPromises = Object.values(SYMBOLS).map(sym => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = resolve;
+      img.onerror = resolve;
+      img.src = sym.file;
+    });
+  });
+
+  // Preload bamboo tray, banner, and lantern images
+  const extraAssets = [
+    'assets/tray.webp?v=2',
+    'assets/banner.webp?v=2',
+    'assets/lantern.webp?v=2',
+    'assets/lanternglow.webp?v=2'
+  ];
+  const extraPromises = extraAssets.map(src => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = resolve;
+      img.onerror = resolve;
+      img.src = src;
+    });
+  });
+
+  await Promise.all([...symbolPromises, ...extraPromises]);
+}
+
+async function initRgsSession() {
+  try {
+    const resp = await fetch(`${RGS_API_BASE}/init`, { method: 'POST' });
+    if (!resp.ok) throw new Error('Init failed');
+    const data = await resp.json();
+    rgsSessionId = data.session_id;
+    balance = data.balance;
+    rgsConnected = true;
+    elements.rgsStatus.classList.remove('disconnected');
+    elements.rgsStatus.classList.add('connected');
+    elements.rgsStatus.textContent = 'Connected';
+    debugLog('RGS connected: ' + rgsSessionId);
+  } catch (err) {
+    console.error('RGS connection failed:', err);
+    elements.rgsStatus.textContent = 'Offline Mode';
+    // Continue in demo mode
+    rgsConnected = false;
+  }
+}
+
+function initGrid() {
+  elements.megawaysGrid.innerHTML = '';
+  for (let r = 0; r < 6; r++) {
+    const reel = document.createElement('div');
+    reel.className = 'reel';
+    reel.id = `reel-${r}`;
+    elements.megawaysGrid.appendChild(reel);
+  }
+  // Set initial heights
+  updateReelHeights([5, 5, 5, 5, 5, 5]);
+  generateRandomBoard();
+}
+
+function updateReelHeights(heights) {
+  currentReelHeights = heights;
+  const ways = heights.reduce((a, b) => a * b, 1);
+  elements.waysCount.textContent = ways.toLocaleString();
+  
+  // Update grid cells per reel
+  for (let r = 0; r < 6; r++) {
+    const reel = document.getElementById(`reel-${r}`);
+    const currentCells = reel.querySelectorAll('.cell').length;
+    const targetCells = heights[r];
+    
+    if (currentCells !== targetCells) {
+      reel.innerHTML = '';
+      for (let c = 0; c < targetCells; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.id = `cell-${r}-${c}`;
+        cell.innerHTML = '<div class="symbol-img"></div>';
+        reel.appendChild(cell);
+      }
+    }
+  }
+}
+
+function generateRandomBoard() {
+  const symbols = Object.keys(SYMBOLS);
+  currentBoard = [];
+  for (let r = 0; r < 6; r++) {
+    const reel = [];
+    for (let c = 0; c < currentReelHeights[r]; c++) {
+      reel.push(symbols[Math.floor(Math.random() * (symbols.length - 1))]);  // Exclude scatter for demo
+    }
+    currentBoard.push(reel);
+  }
+  // Initial board - no animation, just display
+  renderBoard(currentBoard, false);
+
+  // Ensure reels are in normal position (not animated)
+  for (let r = 0; r < 6; r++) {
+    const reel = document.getElementById(`reel-${r}`);
+    if (reel) {
+      reel.classList.remove('conveyor-enter', 'conveyor-exit', 'conveyor-ready');
+    }
+  }
+}
+
+function renderBoard(board, animate = false) {
+  currentBoard = board;
+  for (let r = 0; r < board.length; r++) {
+    const reel = board[r];
+    for (let c = 0; c < reel.length; c++) {
+      const cell = document.getElementById(`cell-${r}-${c}`);
+      if (!cell) continue;
+      const symImg = cell.querySelector('.symbol-img');
+      const symbol = SYMBOLS[reel[c]];
+      if (symbol) {
+        symImg.style.backgroundImage = `url('${symbol.file}')`;
+      }
+    }
+  }
+}
+
+// Conveyor belt animation for initial spin
+// 1. Old symbols slide off to the right (fast)
+// 2. New symbols slide in from the left, staggered by column
+// Like plates arriving on a sushi conveyor belt
+async function playConveyorAnimation(newBoard) {
+  const reels = [];
+  for (let r = 0; r < 6; r++) {
+    reels.push(document.getElementById(`reel-${r}`));
+  }
+
+  // Get ALL parent elements that might clip the animation
+  const body = document.body;
+  const html = document.documentElement;
+  const gameWrapper = document.querySelector('.game-wrapper');
+  const gameContainer = document.querySelector('.game-container');
+  const gridWrapper = document.querySelector('.grid-wrapper');
+  const megawaysGrid = document.getElementById('megawaysGrid');
+
+  // Step 1: Slide old symbols off to the right (all at once, fast - 200ms)
+  reels.forEach(reel => {
+    if (reel) {
+      reel.classList.remove('conveyor-enter', 'conveyor-ready');
+      reel.classList.add('conveyor-exit');
+    }
+  });
+
+  // Wait for exit animation to complete
+  await sleep(220);
+
+  // Step 2: Position reels off-screen to the left
+  reels.forEach(reel => {
+    if (reel) {
+      reel.classList.remove('conveyor-exit');
+      reel.classList.add('conveyor-ready');
+    }
+  });
+
+  // Update symbol images while off-screen
+  renderBoard(newBoard, false);
+
+  // CRITICAL: Temporarily allow overflow on ALL parent containers
+  // so reels can be visible while sliding in from off-screen left
+  html.style.overflow = 'visible';
+  body.style.overflow = 'visible';
+  if (gameWrapper) gameWrapper.style.overflow = 'visible';
+  if (gameContainer) gameContainer.style.overflow = 'visible';
+  if (gridWrapper) gridWrapper.style.overflow = 'visible';
+  if (megawaysGrid) megawaysGrid.style.overflow = 'visible';
+
+  // CRITICAL: Force browser reflow to commit the off-screen position
+  reels.forEach(reel => {
+    if (reel) {
+      reel.offsetHeight; // Force reflow
+    }
+  });
+
+  // Small delay to ensure reflow is complete
+  await sleep(20);
+
+  // Step 3: Slide new symbols in from the left
+  // ADD conveyor-enter WITHOUT removing conveyor-ready
+  // CSS cascade: conveyor-enter comes after conveyor-ready in stylesheet,
+  // so its transform: translateX(0) overrides conveyor-ready's translateX(-100vw)
+  reels.forEach(reel => {
+    if (reel) {
+      reel.classList.add('conveyor-enter');
+    }
+  });
+
+  // Play fall sound for each reel landing (staggered)
+  // Reel delays: 0.00s, 0.08s, 0.16s, 0.24s, 0.32s, 0.40s
+  // Transition: 0.6s each, so they land at 0.6s, 0.68s, 0.76s, 0.84s, 0.92s, 1.0s
+  const reelDelays = [0, 80, 160, 240, 320, 400];  // ms
+  const transitionTime = 600;  // ms
+  reelDelays.forEach((delay, i) => {
+    setTimeout(() => {
+      playSfx(elements.sfxFall);
+    }, delay + transitionTime);
+  });
+
+  // Wait for all reels to finish entering
+  // Last reel: 0.40s delay + 0.6s transition = 1.0s total
+  await sleep(1050);
+
+  // Restore overflow settings to prevent scrollbars and contain cascade animations
+  html.style.overflow = '';
+  body.style.overflow = '';
+  if (gameWrapper) gameWrapper.style.overflow = '';
+  if (gameContainer) gameContainer.style.overflow = '';
+  if (gridWrapper) gridWrapper.style.overflow = '';
+  if (megawaysGrid) megawaysGrid.style.overflow = '';
+
+  // Clean up ALL animation classes
+  reels.forEach(reel => {
+    if (reel) {
+      reel.classList.remove('conveyor-enter', 'conveyor-ready');
+    }
+  });
+}
+
+function updateUI() {
+  elements.balanceDisplay.textContent = formatMoney(balance);
+  elements.betDisplay.textContent = formatMoney(BETS[betIndex]);
+  elements.winDisplay.textContent = formatMoney(totalSpinWin);
+
+  // Update multiplier with animation
+  const multEl = elements.multiplierDisplay;
+  const oldMult = parseInt(multEl.textContent.slice(1)) || 1;
+  if (currentMultiplier > oldMult) {
+    multEl.classList.add('boosted');
+    setTimeout(() => multEl.classList.remove('boosted'), 500);
+  }
+  multEl.textContent = `x${currentMultiplier}`;
+
+  // Update lantern state based on multiplier
+  updateLantern(currentMultiplier);
+
+  // Update CSS neon glow state (free spins mode, big win mode)
+  updateNeonGlow();
+
+  // Free spins display
+  if (inFreeSpins) {
+    elements.freeSpinsDisplay.classList.add('active');
+    elements.freeSpinsCount.textContent = freeSpinsRemaining;
+  } else {
+    elements.freeSpinsDisplay.classList.remove('active');
+  }
+
+  // Bet buttons
+  document.getElementById('betDown').disabled = betIndex <= 0 || spinning;
+  document.getElementById('betUp').disabled = betIndex >= BETS.length - 1 || spinning;
+}
+
+function updateLantern(mult) {
+  const lantern = elements.lanternContainer;
+  const grid = elements.megawaysGrid;
+
+  // Remove all lantern states
+  lantern.classList.remove('lantern-normal', 'lantern-pulse', 'lantern-intense');
+
+  // Set lantern state based on multiplier
+  if (mult >= 8) {
+    // x8+: Intense glow, faster pulse
+    lantern.classList.add('lantern-intense');
+  } else if (mult >= 4) {
+    // x4-x7: Subtle pulse
+    lantern.classList.add('lantern-pulse');
+  } else {
+    // x1-x3: Normal
+    lantern.classList.add('lantern-normal');
+  }
+
+  // Update grid drunk effects (subtle wobble at high multipliers)
+  grid.classList.remove('drunk-1', 'drunk-2', 'drunk-3');
+  if (mult >= 4 && mult <= 7) grid.classList.add('drunk-1');
+  if (mult >= 8 && mult <= 12) grid.classList.add('drunk-2');
+  if (mult >= 13) grid.classList.add('drunk-3');
+}
+
+function formatMoney(amount) {
+  return '$' + amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function changeBet(delta) {
+  if (spinning) return;
+  betIndex = Math.max(0, Math.min(BETS.length - 1, betIndex + delta));
+  updateUI();
+}
+
+async function spin() {
+  if (spinning) return;
+  
+  const bet = BETS[betIndex];
+  
+  // Check balance (unless in free spins)
+  if (!inFreeSpins && balance < bet) {
+    alert('Insufficient balance!');
+    return;
+  }
+  
+  spinning = true;
+  totalSpinWin = 0;
+  currentMultiplier = 1;
+  elements.spinBtn.disabled = true;
+  elements.spinBtn.classList.add('spinning');
+  elements.winDisplay.textContent = formatMoney(0);
+  updateUI();
+
+  // Play spin sound effect
+  playSfx(elements.sfxSpin);
+
+  try {
+    let result;
+    
+    if (rgsConnected) {
+      // Call RGS
+      const resp = await fetch(`${RGS_API_BASE}/spin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: rgsSessionId,
+          bet_amount: bet,
+          bet_mode: 'base'
+        })
+      });
+      
+      if (!resp.ok) throw new Error('Spin failed');
+      result = await resp.json();
+      balance = result.balance;
+      debugLog('Spin result: ' + JSON.stringify(result, null, 2));
+    } else {
+      // Demo mode
+      result = generateDemoSpin(bet);
+    }
+
+    // Process result
+    await processSpinResult(result);
+
+  } catch (err) {
+    console.error('Spin error:', err);
+    debugLog('Error: ' + err.message);
+  }
+
+  spinning = false;
+  elements.spinBtn.disabled = false;
+  elements.spinBtn.classList.remove('spinning');
+  updateUI();
+}
+
+async function processSpinResult(result) {
+  const events = result.events || [];
+
+  // Update reel heights
+  if (result.reel_heights) {
+    updateReelHeights(result.reel_heights);
+  }
+
+  for (const event of events) {
+    switch (event.type) {
+      case 'reveal':
+        // Initial board reveal with conveyor belt animation
+        // Symbols slide in from the left like plates on a sushi conveyor
+        await playConveyorAnimation(event.board);
+        break;
+
+      case 'win':
+        // Highlight winning positions
+        await highlightWins(event.wins);
+        totalSpinWin += event.total_win;
+        currentMultiplier = event.cascade_multiplier;
+        updateUI();
+        await sleep(800);
+        break;
+
+      case 'tumble':
+        // Explode winning symbols
+        await playExplodeAnimation(event.exploding_positions);
+
+        // Drop new symbols
+        await playDropAnimation(event.new_symbols);
+
+        // Update board
+        renderBoard(event.board, false);
+        currentMultiplier = event.new_cascade_multiplier;
+        updateUI();
+        await sleep(300);
+        break;
+
+      case 'scatter_trigger':
+        // Show free spins overlay
+        await showFreeSpinsTrigger(event.free_spins_awarded, event.scatter_positions);
+        break;
+
+      case 'spin_end':
+        totalSpinWin = event.total_win;
+
+        // Big win animation
+        if (totalSpinWin > BETS[betIndex] * 10) {
+          elements.winDisplay.classList.add('big-win');
+          setTimeout(() => elements.winDisplay.classList.remove('big-win'), 1000);
+        }
+        break;
+    }
+  }
+
+  // Handle free spins state
+  if (result.free_spins_triggered) {
+    inFreeSpins = true;
+    freeSpinsRemaining = result.free_spins_awarded;
+  } else if (result.is_free_spin) {
+    freeSpinsRemaining = result.free_spins_remaining;
+    if (freeSpinsRemaining <= 0) {
+      inFreeSpins = false;
+    }
+  }
+  
+  updateUI();
+}
+
+async function highlightWins(wins) {
+  // Clear previous highlights
+  document.querySelectorAll('.cell.winning').forEach(c => c.classList.remove('winning'));
+  
+  for (const win of wins) {
+    for (const pos of win.positions) {
+      const cell = document.getElementById(`cell-${pos.reel}-${pos.row}`);
+      if (cell) {
+        cell.classList.add('winning');
+      }
+    }
+  }
+}
+
+async function playExplodeAnimation(positions) {
+  for (const pos of positions) {
+    const cell = document.getElementById(`cell-${pos.reel}-${pos.row}`);
+    if (cell) {
+      cell.classList.remove('winning');
+      cell.classList.add('exploding');
+    }
+  }
+  await sleep(400);
+  
+  // Clear exploding class
+  document.querySelectorAll('.cell.exploding').forEach(c => c.classList.remove('exploding'));
+}
+
+async function playDropAnimation(newSymbols) {
+  for (let r = 0; r < newSymbols.length; r++) {
+    const reelNewSyms = newSymbols[r];
+    for (let i = 0; i < reelNewSyms.length; i++) {
+      const cell = document.getElementById(`cell-${r}-${i}`);
+      if (cell) {
+        const symImg = cell.querySelector('.symbol-img');
+        const symbol = SYMBOLS[reelNewSyms[i]];
+        if (symbol) {
+          symImg.style.backgroundImage = `url('${symbol.file}')`;
+        }
+        cell.classList.add('dropping');
+      }
+    }
+  }
+
+  // Play plop sound when cascade symbols land
+  setTimeout(() => playSfx(elements.sfxPlop), 300);
+
+  await sleep(350);
+
+  document.querySelectorAll('.cell.dropping').forEach(c => c.classList.remove('dropping'));
+}
+
+async function showFreeSpinsTrigger(amount, positions) {
+  // Highlight scatters
+  for (const pos of positions) {
+    const cell = document.getElementById(`cell-${pos.reel}-${pos.row}`);
+    if (cell) cell.classList.add('scatter-glow');
+  }
+  
+  await sleep(1000);
+  
+  // Show overlay
+  elements.fsAmount.textContent = amount;
+  elements.fsOverlay.classList.add('active');
+  
+  await sleep(2500);
+  
+  elements.fsOverlay.classList.remove('active');
+  document.querySelectorAll('.cell.scatter-glow').forEach(c => c.classList.remove('scatter-glow'));
+}
+
+function generateDemoSpin(bet) {
+  // Simple demo spin for offline mode
+  const heights = [];
+  for (let i = 0; i < 6; i++) {
+    heights.push(Math.floor(Math.random() * 6) + 2);  // 2-7
+  }
+  
+  const symbols = Object.keys(SYMBOLS);
+  const board = [];
+  for (let r = 0; r < 6; r++) {
+    const reel = [];
+    for (let c = 0; c < heights[r]; c++) {
+      reel.push(symbols[Math.floor(Math.random() * symbols.length)]);
+    }
+    board.push(reel);
+  }
+  
+  return {
+    reel_heights: heights,
+    total_ways: heights.reduce((a, b) => a * b, 1),
+    events: [
+      { type: 'reveal', board: board },
+      { type: 'spin_end', total_win: 0 }
+    ],
+    total_win: 0,
+    cascade_count: 0,
+    final_multiplier: 1,
+    free_spins_triggered: false,
+    free_spins_awarded: 0,
+    free_spins_remaining: 0,
+    is_free_spin: false
+  };
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function debugLog(msg) {
+  if (!DEBUG) return;
+  const panel = elements.debugPanel;
+  panel.innerHTML = msg + '<br>' + panel.innerHTML;
+  console.log('[DEBUG]', msg);
+}
+
+// ============================================
+// CSS NEON GLOW CONTROL
+// ============================================
+
+// Initialize neon glow effects
+function initNeonGlow() {
+  // Start the random flicker timer
+  scheduleNextFlicker();
+}
+
+// Schedule the next flicker (every 8-12 seconds)
+function scheduleNextFlicker() {
+  const delay = 8000 + Math.random() * 4000;  // 8-12 seconds
+  neonFlickerTimer = setTimeout(() => {
+    triggerNeonFlicker();
+    scheduleNextFlicker();
+  }, delay);
+}
+
+// Trigger 2-3 rapid blue flickers like a buzzing neon sign
+async function triggerNeonFlicker() {
+  const flickerCount = 2 + Math.floor(Math.random() * 2);  // 2-3 times
+  const grid = elements.megawaysGrid;
+
+  for (let i = 0; i < flickerCount; i++) {
+    // Flash blue
+    grid.classList.add('neon-flicker');
+    await sleep(100 + Math.random() * 50);  // 100-150ms
+
+    // Back to normal
+    grid.classList.remove('neon-flicker');
+    await sleep(50 + Math.random() * 100);  // 50-150ms gap
+  }
+}
+
+// Update neon glow based on current game state
+function updateNeonGlow() {
+  const grid = elements.megawaysGrid;
+
+  // Free spins mode (orange/gold neon)
+  if (inFreeSpins) {
+    grid.classList.add('neon-freespins');
+  } else {
+    grid.classList.remove('neon-freespins');
+  }
+
+  // Big win mode (8x+ multiplier = intense glow, faster pulse)
+  if (currentMultiplier >= 8) {
+    grid.classList.add('neon-bigwin');
+  } else {
+    grid.classList.remove('neon-bigwin');
+  }
+}
+
+// ============================================
+// BACKGROUND MUSIC CONTROL
+// ============================================
+
+let musicStarted = false;
+let musicMuted = false;
+
+// Initialize music - set volume and add event listeners
+function initMusic() {
+  const audio = elements.bgMusic;
+  const toggle = elements.musicToggle;
+
+  // Set initial volumes
+  audio.volume = 0.3;
+  elements.sfxSpin.volume = 0.5;
+  elements.sfxFall.volume = 0.4;
+  elements.sfxPlop.volume = 0.4;
+
+  // Music toggle button click handler
+  toggle.addEventListener('click', toggleMusic);
+
+  // Start music on first user interaction (browsers block autoplay)
+  document.addEventListener('click', startMusicOnInteraction, { once: true });
+  document.addEventListener('touchstart', startMusicOnInteraction, { once: true });
+  document.addEventListener('keydown', startMusicOnInteraction, { once: true });
+}
+
+// Play a sound effect (respects mute toggle)
+function playSfx(sfxElement) {
+  if (musicMuted) return;
+
+  // Reset to start and play
+  sfxElement.currentTime = 0;
+  sfxElement.play().catch(err => {
+    // Ignore autoplay errors
+  });
+}
+
+// Start music on first user interaction
+function startMusicOnInteraction() {
+  if (musicStarted) return;
+
+  const audio = elements.bgMusic;
+  audio.play().then(() => {
+    musicStarted = true;
+    updateMusicToggleIcon();
+    debugLog('Music started');
+  }).catch(err => {
+    console.log('Music autoplay blocked:', err);
+  });
+}
+
+// Toggle music mute/unmute
+function toggleMusic(e) {
+  e.stopPropagation();  // Don't trigger startMusicOnInteraction
+
+  const audio = elements.bgMusic;
+
+  if (!musicStarted) {
+    // First click - try to start music
+    audio.play().then(() => {
+      musicStarted = true;
+      musicMuted = false;
+      updateMusicToggleIcon();
+    }).catch(err => {
+      console.log('Music play failed:', err);
+    });
+    return;
+  }
+
+  // Toggle mute
+  musicMuted = !musicMuted;
+  audio.muted = musicMuted;
+  updateMusicToggleIcon();
+}
+
+// Update the toggle button icon
+function updateMusicToggleIcon() {
+  const toggle = elements.musicToggle;
+  if (musicMuted || !musicStarted) {
+    toggle.textContent = '🔇';
+    toggle.classList.add('muted');
+  } else {
+    toggle.textContent = '🔊';
+    toggle.classList.remove('muted');
+  }
+}
+
+// Start game
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
