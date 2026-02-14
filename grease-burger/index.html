@@ -1,0 +1,2241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Grease Burger: The Quest For Munchies</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @font-face {
+            font-family: 'SlotFont';
+            src: local('Impact'), local('Arial Black');
+        }
+
+        :root {
+            --primary-orange: #ff6b35;
+            --primary-red: #d32f2f;
+            --win-green: #4caf50;
+            --dark-blue: #0a0e1a;
+            --kitchen-yellow: #ffc107;
+            --car-blue: #1a2a4a;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'SlotFont', Impact, 'Arial Black', sans-serif;
+            background: var(--dark-blue);
+        }
+
+        #game-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Background video */
+        #bg-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Top UI Bar */
+        #top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 90%;
+            max-width: 1400px;
+            padding: 12px 30px;
+            background: rgba(10, 14, 26, 0.85);
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .balance-display, .win-display {
+            color: #fff;
+            font-size: 18px;
+            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+
+        .balance-display span, .win-display span {
+            color: var(--win-green);
+            font-size: 22px;
+        }
+
+        .mute-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .mute-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid var(--primary-orange);
+            background: rgba(10, 14, 26, 0.8);
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mute-btn:hover {
+            background: var(--primary-orange);
+        }
+
+        .mute-btn.muted {
+            opacity: 0.5;
+            border-color: #666;
+        }
+
+        /* Grid Container */
+        #grid-container {
+            position: relative;
+            display: flex;
+            width: 78%;
+            max-width: 1400px;
+            justify-content: center;
+            padding: 0;
+        }
+
+        #grid-wrapper {
+            display: flex;
+            gap: 0;
+            position: relative;
+            align-items: stretch;
+        }
+
+        /* Reel set container - holds 3 columns with label and background */
+        .reel-set {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            padding: 8px 12px 12px 12px;
+            border-radius: 15px;
+        }
+
+        /* Order side (columns 0-2) - cool blue theme */
+        .reel-set.order-side {
+            background: linear-gradient(180deg,
+                rgba(30, 60, 100, 0.35) 0%,
+                rgba(20, 45, 80, 0.30) 50%,
+                rgba(15, 35, 65, 0.35) 100%
+            );
+            box-shadow: inset 0 0 30px rgba(60, 120, 180, 0.15);
+        }
+
+        /* Kitchen side (columns 3-5) - warm orange/brown theme */
+        .reel-set.kitchen-side {
+            background: linear-gradient(180deg,
+                rgba(120, 60, 20, 0.35) 0%,
+                rgba(100, 50, 15, 0.30) 50%,
+                rgba(80, 40, 10, 0.35) 100%
+            );
+            box-shadow: inset 0 0 30px rgba(180, 100, 40, 0.15);
+        }
+
+        /* Reel set banner images - small header nameplates */
+        .reel-set-banner {
+            max-height: 45px;
+            width: auto;
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 2px;
+            display: block;
+        }
+
+        /* Container for the 3 reels in each set */
+        .reel-group {
+            display: flex;
+            gap: 4px;
+        }
+
+        /* Drive-through window wall divider - bigger and more prominent */
+        .wall-divider {
+            width: 35px;
+            flex-shrink: 0;
+            align-self: stretch;
+            background: linear-gradient(90deg,
+                #1a1815 0%,
+                #2d2825 10%,
+                #3a3530 30%,
+                #3d3835 50%,
+                #3a3530 70%,
+                #2d2825 90%,
+                #1a1815 100%
+            );
+            box-shadow:
+                inset 5px 0 10px rgba(0, 0, 0, 0.7),
+                inset -5px 0 10px rgba(0, 0, 0, 0.7),
+                inset 0 5px 8px rgba(0, 0, 0, 0.5),
+                inset 0 -5px 8px rgba(0, 0, 0, 0.5),
+                3px 0 12px rgba(0, 0, 0, 0.4),
+                -3px 0 12px rgba(0, 0, 0, 0.4);
+            position: relative;
+        }
+
+        /* Vertical groove detail on the wall */
+        .wall-divider::before {
+            content: '';
+            position: absolute;
+            top: 8%;
+            bottom: 8%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            background: linear-gradient(180deg,
+                transparent 0%,
+                rgba(60, 55, 50, 0.6) 15%,
+                rgba(80, 75, 65, 0.7) 50%,
+                rgba(60, 55, 50, 0.6) 85%,
+                transparent 100%
+            );
+            border-radius: 2px;
+            box-shadow: inset 1px 0 2px rgba(0,0,0,0.4), inset -1px 0 2px rgba(0,0,0,0.4);
+        }
+
+        /* Reel column container - clips the scrolling strip */
+        .reel-column {
+            width: 210px;
+            height: calc(195px * 3 + 4px * 2); /* 3 cells + 2 gaps */
+            overflow: hidden;
+            position: relative;
+            border-radius: 12px;
+        }
+
+        /* The scrolling strip inside each reel */
+        .reel-strip {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            will-change: transform;
+        }
+
+        /* Symbol cells - base styles */
+        .symbol-cell {
+            width: 210px;
+            height: 195px;
+            background-size: 82%, 100%, 100%;
+            background-position: center, center, center;
+            background-repeat: no-repeat, no-repeat, no-repeat;
+            border-radius: 12px;
+            position: relative;
+            z-index: 1;
+            filter: brightness(1.12) saturate(1.15) drop-shadow(0 0 3px rgba(255, 255, 220, 0.8)) drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.7));
+        }
+
+        /* Order side (columns 0-2) - stoner tray background with dark overlay */
+        .symbol-cell.order-glow {
+            border: 2px solid rgba(80, 100, 140, 0.6);
+            box-shadow:
+                inset 0 2px 6px rgba(0, 0, 0, 0.4),
+                0 3px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Kitchen side (columns 3-5) - kitchen tray background with dark overlay */
+        .symbol-cell.kitchen-glow {
+            border: 2px solid rgba(160, 100, 50, 0.6);
+            box-shadow:
+                inset 0 2px 6px rgba(0, 0, 0, 0.4),
+                0 3px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Winning animations - separate for each side */
+        .symbol-cell.winning.order-glow {
+            animation: winPulseBlue 0.5s ease-in-out infinite;
+        }
+
+        .symbol-cell.winning.kitchen-glow {
+            animation: winPulseOrange 0.5s ease-in-out infinite;
+        }
+
+        @keyframes winPulseBlue {
+            0%, 100% {
+                transform: scale(1);
+                filter: brightness(1.12) saturate(1.15) drop-shadow(0 0 3px rgba(255, 255, 220, 0.8)) drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.7));
+                box-shadow:
+                    inset 0 2px 6px rgba(0, 0, 0, 0.4),
+                    0 3px 6px rgba(0, 0, 0, 0.4),
+                    0 0 15px rgba(80, 140, 255, 0.6);
+                border-color: rgba(100, 160, 255, 0.9);
+            }
+            50% {
+                transform: scale(1.06);
+                filter: brightness(1.3) saturate(1.25) drop-shadow(0 0 6px rgba(255, 255, 220, 1)) drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.7));
+                box-shadow:
+                    inset 0 2px 6px rgba(0, 0, 0, 0.3),
+                    0 0 25px rgba(80, 140, 255, 1),
+                    0 0 45px rgba(100, 180, 255, 0.6);
+                border-color: rgba(140, 200, 255, 1);
+            }
+        }
+
+        @keyframes winPulseOrange {
+            0%, 100% {
+                transform: scale(1);
+                filter: brightness(1.12) saturate(1.15) drop-shadow(0 0 3px rgba(255, 255, 220, 0.8)) drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.7));
+                box-shadow:
+                    inset 0 2px 6px rgba(0, 0, 0, 0.4),
+                    0 3px 6px rgba(0, 0, 0, 0.4),
+                    0 0 15px rgba(255, 160, 50, 0.6);
+                border-color: rgba(255, 160, 80, 0.9);
+            }
+            50% {
+                transform: scale(1.06);
+                filter: brightness(1.3) saturate(1.25) drop-shadow(0 0 6px rgba(255, 255, 220, 1)) drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.7));
+                box-shadow:
+                    inset 0 2px 6px rgba(0, 0, 0, 0.3),
+                    0 0 25px rgba(255, 160, 50, 1),
+                    0 0 45px rgba(255, 180, 80, 0.6);
+                border-color: rgba(255, 200, 100, 1);
+            }
+        }
+
+        /* No blur during spin - symbols should be sharp and visible flying past */
+        .reel-strip .symbol-cell {
+            filter: brightness(1.12) saturate(1.15) drop-shadow(0 0 3px rgba(255, 255, 220, 0.8)) drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.7));
+        }
+
+        /* Bottom Controls */
+        #bottom-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            padding: 15px 40px;
+            background: rgba(10, 14, 26, 0.85);
+            border-radius: 50px;
+        }
+
+        .bet-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .bet-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border: 3px solid var(--primary-orange);
+            background: linear-gradient(180deg, #1a1a2e 0%, #0a0a1a 100%);
+            color: var(--primary-orange);
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bet-btn:hover {
+            background: var(--primary-orange);
+            color: #fff;
+            transform: scale(1.1);
+        }
+
+        .bet-btn:active {
+            transform: scale(0.95);
+        }
+
+        .bet-display {
+            color: #fff;
+            font-size: 16px;
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .bet-display .amount {
+            font-size: 24px;
+            color: var(--kitchen-yellow);
+        }
+
+        #spin-btn {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 5px solid var(--primary-orange);
+            background: linear-gradient(180deg, var(--primary-red) 0%, #8b0000 100%);
+            color: #fff;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 6px 20px rgba(211, 47, 47, 0.5), inset 0 -5px 15px rgba(0,0,0,0.3);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #spin-btn:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 8px 30px rgba(211, 47, 47, 0.7), inset 0 -5px 15px rgba(0,0,0,0.3);
+        }
+
+        #spin-btn:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+
+        #spin-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #spin-btn.spinning {
+            animation: spinBtnPulse 0.5s ease-in-out infinite;
+        }
+
+        @keyframes spinBtnPulse {
+            0%, 100% { box-shadow: 0 6px 20px rgba(211, 47, 47, 0.5); }
+            50% { box-shadow: 0 6px 40px rgba(211, 47, 47, 0.9); }
+        }
+
+        /* Free Spins Counter */
+        #fs-counter {
+            display: none;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(180deg, #6a1b9a 0%, #4a148c 100%);
+            padding: 10px 20px;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 18px;
+            box-shadow: 0 4px 15px rgba(106, 27, 154, 0.5);
+            z-index: 100;
+        }
+
+        #fs-counter .spins-left {
+            font-size: 28px;
+            color: var(--kitchen-yellow);
+        }
+
+        #fs-counter .fs-win {
+            margin-top: 5px;
+            color: var(--win-green);
+        }
+
+        /* Overlay Screens */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 1000;
+        }
+
+        .overlay.active {
+            display: flex;
+        }
+
+        /* Free Spins Trigger Screen */
+        #fs-trigger-screen {
+            text-align: center;
+        }
+
+        #fs-trigger-screen .intercom-box {
+            background: linear-gradient(180deg, #333 0%, #1a1a1a 100%);
+            border: 8px solid #555;
+            border-radius: 20px;
+            padding: 40px 60px;
+            box-shadow: 0 0 50px rgba(255, 193, 7, 0.3);
+            position: relative;
+        }
+
+        #fs-trigger-screen .intercom-box::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 20px;
+            background: #666;
+            border-radius: 5px 5px 0 0;
+        }
+
+        #fs-trigger-screen h2 {
+            color: var(--kitchen-yellow);
+            font-size: 36px;
+            text-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
+            margin-bottom: 20px;
+            animation: textGlow 1s ease-in-out infinite;
+        }
+
+        @keyframes textGlow {
+            0%, 100% { text-shadow: 0 0 20px rgba(255, 193, 7, 0.5); }
+            50% { text-shadow: 0 0 40px rgba(255, 193, 7, 0.9); }
+        }
+
+        #fs-trigger-screen .spins-amount {
+            font-size: 72px;
+            color: #fff;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+        }
+
+        #fs-trigger-screen .free-spins-text {
+            font-size: 28px;
+            color: var(--win-green);
+            margin-top: 10px;
+        }
+
+        /* Free Spins Pick Screen */
+        #fs-pick-screen {
+            text-align: center;
+        }
+
+        #fs-pick-screen h2 {
+            color: #fff;
+            font-size: 32px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+
+        .pick-options {
+            display: flex;
+            gap: 40px;
+        }
+
+        .pick-option {
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .pick-option:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 60px rgba(255, 193, 7, 0.4);
+        }
+
+        .pick-option img {
+            width: 300px;
+            height: auto;
+            display: block;
+        }
+
+        .pick-option .pick-label {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            color: #fff;
+            font-size: 18px;
+        }
+
+        .pick-option .pick-label .bonus-type {
+            color: var(--kitchen-yellow);
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        /* Free Spins End Screen */
+        #fs-end-screen {
+            text-align: center;
+        }
+
+        #fs-end-screen .receipt {
+            background: #f5f5dc;
+            padding: 40px;
+            border-radius: 5px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            color: #333;
+            font-family: 'Courier New', monospace;
+            min-width: 300px;
+        }
+
+        #fs-end-screen .receipt h3 {
+            font-size: 24px;
+            border-bottom: 2px dashed #333;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+
+        #fs-end-screen .receipt .total-label {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        #fs-end-screen .receipt .total-amount {
+            font-size: 48px;
+            color: var(--win-green);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        #fs-end-screen .receipt .thanks {
+            margin-top: 20px;
+            font-size: 14px;
+            border-top: 2px dashed #333;
+            padding-top: 15px;
+        }
+
+        #fs-end-screen .continue-btn {
+            margin-top: 30px;
+            padding: 15px 40px;
+            font-size: 20px;
+            background: var(--win-green);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        #fs-end-screen .continue-btn:hover {
+            transform: scale(1.05);
+            background: #66bb6a;
+        }
+
+        /* Win Celebration Overlay */
+        #win-celebration {
+            pointer-events: none;
+        }
+
+        #win-celebration.active {
+            pointer-events: auto;
+        }
+
+        .win-text-img {
+            max-width: 80%;
+            height: auto;
+            animation: winTextBounce 0.5s ease-out;
+        }
+
+        @keyframes winTextBounce {
+            0% { transform: scale(0); }
+            60% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .win-amount-display {
+            font-size: 64px;
+            color: var(--win-green);
+            text-shadow: 0 0 30px rgba(76, 175, 80, 0.8), 0 4px 8px rgba(0, 0, 0, 0.5);
+            margin-top: 20px;
+            animation: winAmountPulse 0.3s ease-in-out infinite;
+        }
+
+        @keyframes winAmountPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .win-subtitle {
+            font-size: 28px;
+            color: #fff;
+            margin-top: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Flying Sprites */
+        .flying-sprite {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            pointer-events: none;
+            z-index: 1001;
+        }
+
+        /* Screen Shake */
+        .screen-shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        .screen-shake-heavy {
+            animation: shakeHeavy 0.8s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-10px); }
+            40% { transform: translateX(10px); }
+            60% { transform: translateX(-10px); }
+            80% { transform: translateX(10px); }
+        }
+
+        @keyframes shakeHeavy {
+            0%, 100% { transform: translate(0, 0); }
+            10% { transform: translate(-15px, -10px); }
+            20% { transform: translate(15px, 10px); }
+            30% { transform: translate(-15px, 10px); }
+            40% { transform: translate(15px, -10px); }
+            50% { transform: translate(-10px, 15px); }
+            60% { transform: translate(10px, -15px); }
+            70% { transform: translate(-10px, -10px); }
+            80% { transform: translate(10px, 10px); }
+            90% { transform: translate(-5px, -5px); }
+        }
+
+        /* Popup Win Display */
+        #popup-win {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: var(--win-green);
+            text-shadow: 0 0 20px rgba(76, 175, 80, 0.8), 0 4px 8px rgba(0, 0, 0, 0.8);
+            z-index: 500;
+            display: none;
+            animation: popupWin 1.5s ease-out forwards;
+        }
+
+        @keyframes popupWin {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            40% { transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -70%) scale(1); }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 1400px) {
+            .symbol-cell {
+                width: 180px;
+                height: 165px;
+                border-radius: 14px;
+            }
+
+            .reel-column {
+                width: 180px;
+                height: calc(165px * 3 + 4px * 2);
+            }
+
+            #grid-container {
+                width: 92%;
+            }
+
+            .reel-set {
+                padding: 6px 10px 10px 10px;
+            }
+
+            .reel-set-banner {
+                max-height: 40px;
+                margin-bottom: 2px;
+            }
+
+            .wall-divider {
+                width: 28px;
+            }
+        }
+
+        @media (max-width: 1100px) {
+            #top-bar {
+                width: 95%;
+            }
+
+            #grid-container {
+                width: 96%;
+            }
+
+            .symbol-cell {
+                width: 150px;
+                height: 138px;
+                border-radius: 10px;
+            }
+
+            .reel-column {
+                width: 150px;
+                height: calc(138px * 3 + 4px * 2);
+            }
+
+            .reel-set {
+                padding: 5px 8px 8px 8px;
+            }
+
+            .reel-set-banner {
+                max-height: 36px;
+                margin-bottom: 2px;
+            }
+
+            .wall-divider {
+                width: 22px;
+            }
+        }
+
+        @media (max-width: 900px) {
+            #top-bar {
+                width: 98%;
+                flex-wrap: wrap;
+                gap: 10px;
+                padding: 8px 15px;
+            }
+
+            .balance-display, .win-display {
+                font-size: 14px;
+            }
+
+            .balance-display span, .win-display span {
+                font-size: 18px;
+            }
+
+            #grid-container {
+                width: 98%;
+            }
+
+            .symbol-cell {
+                width: 123px;
+                height: 114px;
+                border-radius: 9px;
+                border-width: 2px;
+            }
+
+            .reel-column {
+                width: 123px;
+                height: calc(114px * 3 + 4px * 2);
+            }
+
+            .reel-set {
+                padding: 4px 6px 6px 6px;
+            }
+
+            .reel-set-banner {
+                max-height: 32px;
+                margin-bottom: 1px;
+            }
+
+            .reel-group {
+                gap: 3px;
+            }
+
+            .wall-divider {
+                width: 18px;
+            }
+
+            #bottom-controls {
+                gap: 10px;
+                padding: 10px 20px;
+            }
+
+            .bet-btn {
+                width: 38px;
+                height: 38px;
+                font-size: 22px;
+            }
+
+            .bet-display .amount {
+                font-size: 20px;
+            }
+
+            #spin-btn {
+                width: 90px;
+                height: 90px;
+                font-size: 16px;
+            }
+
+            .pick-options {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .pick-option img {
+                width: 200px;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .symbol-cell {
+                width: 93px;
+                height: 87px;
+                border-radius: 7px;
+                border-width: 1.5px;
+            }
+
+            .reel-column {
+                width: 93px;
+                height: calc(87px * 3 + 3px * 2);
+            }
+
+            .reel-set {
+                padding: 3px 5px 5px 5px;
+                border-radius: 10px;
+            }
+
+            .reel-set-banner {
+                max-height: 26px;
+                margin-bottom: 1px;
+            }
+
+            .reel-group {
+                gap: 2px;
+            }
+
+            .reel-strip {
+                gap: 3px;
+            }
+
+            .wall-divider {
+                width: 12px;
+            }
+
+            #spin-btn {
+                width: 70px;
+                height: 70px;
+                font-size: 14px;
+            }
+
+            .mute-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+        }
+
+        @media (max-width: 550px) {
+            .symbol-cell {
+                width: 75px;
+                height: 69px;
+                border-radius: 6px;
+            }
+
+            .reel-column {
+                width: 75px;
+                height: calc(69px * 3 + 2px * 2);
+            }
+
+            .reel-set {
+                padding: 2px 4px 4px 4px;
+                border-radius: 8px;
+            }
+
+            .reel-set-banner {
+                max-height: 22px;
+                margin-bottom: 1px;
+            }
+
+            .reel-group {
+                gap: 2px;
+            }
+
+            .reel-strip {
+                gap: 2px;
+            }
+
+            .wall-divider {
+                width: 8px;
+            }
+
+            #bottom-controls {
+                padding: 8px 15px;
+                gap: 8px;
+            }
+
+            #spin-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 12px;
+            }
+
+            .bet-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 18px;
+            }
+        }
+
+        /* Payline highlight */
+        .payline-highlight {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* Loading screen */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--dark-blue);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        #loading-screen .loader {
+            width: 60px;
+            height: 60px;
+            border: 5px solid rgba(255, 255, 255, 0.2);
+            border-top-color: var(--primary-orange);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #loading-screen p {
+            color: #fff;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+
+        /* Mode indicator during free spins */
+        #mode-indicator {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 16px;
+            color: #fff;
+            display: none;
+            white-space: nowrap;
+        }
+
+        #mode-indicator.order-mode {
+            background: linear-gradient(180deg, #1565c0 0%, #0d47a1 100%);
+            box-shadow: 0 4px 15px rgba(21, 101, 192, 0.5);
+        }
+
+        #mode-indicator.kitchen-mode {
+            background: linear-gradient(180deg, #ff8f00 0%, #e65100 100%);
+            box-shadow: 0 4px 15px rgba(255, 143, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <p>Loading The Munchies...</p>
+    </div>
+
+    <!-- Background Video -->
+    <video id="bg-video" autoplay loop muted playsinline poster="./assets/bg_main.webp?v=1">
+        <source src="./assets/bck_small.mp4" type="video/mp4">
+    </video>
+
+    <!-- Main Game Container -->
+    <div id="game-container">
+        <!-- Top UI Bar -->
+        <div id="top-bar">
+            <div class="balance-display">BALANCE: <span id="balance">1000.00</span></div>
+            <div class="win-display">WIN: <span id="last-win">0.00</span></div>
+            <div class="mute-controls">
+                <button class="mute-btn" id="music-mute" title="Toggle Music">&#9835;</button>
+                <button class="mute-btn" id="sfx-mute" title="Toggle SFX">&#128266;</button>
+            </div>
+        </div>
+
+        <!-- Grid Container -->
+        <div id="grid-container">
+            <div id="mode-indicator"></div>
+            <div id="grid-wrapper">
+                <!-- All 18 cells will be added by JavaScript -->
+            </div>
+
+            <!-- Popup win display -->
+            <div id="popup-win"></div>
+        </div>
+
+        <!-- Free Spins Counter -->
+        <div id="fs-counter">
+            <div>FREE SPINS: <span class="spins-left" id="spins-left">10</span></div>
+            <div class="fs-win">WIN: <span id="fs-win-amount">0.00</span></div>
+        </div>
+
+        <!-- Bottom Controls -->
+        <div id="bottom-controls">
+            <div class="bet-control">
+                <button class="bet-btn" id="bet-down">-</button>
+                <div class="bet-display">
+                    <div>BET</div>
+                    <div class="amount" id="bet-amount">1.00</div>
+                </div>
+                <button class="bet-btn" id="bet-up">+</button>
+            </div>
+            <button id="spin-btn">SPIN</button>
+        </div>
+    </div>
+
+    <!-- Overlay Screens -->
+    <!-- Free Spins Trigger -->
+    <div class="overlay" id="fs-trigger-screen">
+        <div class="intercom-box">
+            <h2>YOUR ORDER IS READY!</h2>
+            <div class="spins-amount" id="trigger-spins-amount">10</div>
+            <div class="free-spins-text">FREE SPINS</div>
+        </div>
+    </div>
+
+    <!-- Free Spins Pick -->
+    <div class="overlay" id="fs-pick-screen">
+        <h2>CHOOSE YOUR BONUS!</h2>
+        <div class="pick-options">
+            <div class="pick-option" id="pick-order">
+                <img src="./assets/fs_pick_order.webp?v=1" alt="The Order">
+                <div class="pick-label">
+                    THE ORDER
+                    <div class="bonus-type">Extra Wilds</div>
+                </div>
+            </div>
+            <div class="pick-option" id="pick-kitchen">
+                <img src="./assets/fs_pick_kitchen.webp?v=1" alt="The Kitchen">
+                <div class="pick-label">
+                    THE KITCHEN
+                    <div class="bonus-type">x3 Multiplier</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Free Spins End -->
+    <div class="overlay" id="fs-end-screen">
+        <div class="receipt">
+            <h3>GREASE BURGER</h3>
+            <div class="total-label">TOTAL WIN</div>
+            <div class="total-amount" id="fs-total-win">$0.00</div>
+            <div class="thanks">THANK YOU FOR YOUR ORDER<br>COME AGAIN!</div>
+        </div>
+        <button class="continue-btn" id="fs-continue">CONTINUE</button>
+    </div>
+
+    <!-- Win Celebration -->
+    <div class="overlay" id="win-celebration">
+        <img class="win-text-img" id="win-text-img" src="" alt="">
+        <div class="win-amount-display" id="celebration-amount">$0.00</div>
+        <div class="win-subtitle" id="win-subtitle"></div>
+    </div>
+
+    <script>
+        // ==================== GAME CONFIGURATION ====================
+        const CONFIG = {
+            REELS: 6,
+            ROWS: 3,
+            BET_LEVELS: [0.20, 0.40, 0.60, 0.80, 1.00, 2.00, 5.00, 10.00],
+            DEFAULT_BET_INDEX: 4,
+            STARTING_BALANCE: 1000,
+            SPIN_DURATION: 2000,
+            REEL_STOP_DELAY: 200,
+            WIN_DISPLAY_TIME: 2000,
+            DEBUG: new URLSearchParams(window.location.search).has('debug')
+        };
+
+        const SYMBOLS = ['burger', 'nachos', 'milkshake', 'taco', 'nuggets', 'onionrings', 'fries', 'hotdog', 'wild', 'scatter'];
+
+        const PAYTABLE = {
+            burger:     { 3: 5,   4: 15,  5: 50,  6: 150 },
+            nachos:     { 3: 4,   4: 12,  5: 40,  6: 120 },
+            milkshake:  { 3: 3,   4: 10,  5: 30,  6: 100 },
+            taco:       { 3: 2,   4: 8,   5: 20,  6: 60 },
+            nuggets:    { 3: 2,   4: 6,   5: 15,  6: 50 },
+            onionrings: { 3: 1.5, 4: 5,   5: 12,  6: 40 },
+            fries:      { 3: 1,   4: 4,   5: 10,  6: 30 },
+            hotdog:     { 3: 1,   4: 3,   5: 8,   6: 25 }
+        };
+
+        const SCATTER_PAYS = { 3: 10, 4: 15, 5: 20, 6: 25 };
+
+        // 20 paylines for 6x3 grid
+        const PAYLINES = [
+            [1, 1, 1, 1, 1, 1], // Middle row
+            [0, 0, 0, 0, 0, 0], // Top row
+            [2, 2, 2, 2, 2, 2], // Bottom row
+            [0, 1, 2, 2, 1, 0], // V shape
+            [2, 1, 0, 0, 1, 2], // Inverted V
+            [0, 0, 1, 1, 2, 2], // Descending steps
+            [2, 2, 1, 1, 0, 0], // Ascending steps
+            [1, 0, 0, 0, 0, 1], // Top dip
+            [1, 2, 2, 2, 2, 1], // Bottom dip
+            [0, 1, 1, 1, 1, 0], // Slight dip top
+            [2, 1, 1, 1, 1, 2], // Slight dip bottom
+            [1, 0, 1, 1, 0, 1], // Zigzag top
+            [1, 2, 1, 1, 2, 1], // Zigzag bottom
+            [0, 1, 0, 0, 1, 0], // Small waves top
+            [2, 1, 2, 2, 1, 2], // Small waves bottom
+            [0, 2, 0, 2, 0, 2], // Alternating top-bottom
+            [2, 0, 2, 0, 2, 0], // Alternating bottom-top
+            [1, 0, 2, 2, 0, 1], // Wide V
+            [1, 2, 0, 0, 2, 1], // Wide inverted V
+            [0, 1, 2, 0, 1, 2]  // Diagonal wave
+        ];
+
+        // ==================== GAME STATE ====================
+        let gameState = {
+            balance: CONFIG.STARTING_BALANCE,
+            betIndex: CONFIG.DEFAULT_BET_INDEX,
+            isSpinning: false,
+            grid: [],
+            freeSpins: {
+                active: false,
+                remaining: 0,
+                totalWin: 0,
+                mode: null // 'order' or 'kitchen'
+            },
+            musicMuted: false,
+            sfxMuted: false
+        };
+
+        // ==================== AUDIO ====================
+        const audio = {
+            music_base: null,
+            music_freespins: null,
+            sfx_win: null,
+            sfx_scatter: null,
+            sfx_fs_trigger: null,
+            sfx_button: null,
+            sfx_bigwin: null
+        };
+
+        function initAudio() {
+            audio.music_base = new Audio('./assets/music_base.mp3?v=1');
+            audio.music_base.loop = true;
+            audio.music_base.volume = 0.3;
+
+            audio.music_freespins = new Audio('./assets/music_freespins.mp3?v=1');
+            audio.music_freespins.loop = true;
+            audio.music_freespins.volume = 0.3;
+
+            audio.sfx_scatter = new Audio('./assets/sfx_scatter.mp3?v=1');
+            audio.sfx_fs_trigger = new Audio('./assets/sfx_fs_trigger.mp3?v=1');
+            audio.sfx_button = new Audio('./assets/sfx_button.mp3?v=1');
+            audio.sfx_bigwin = new Audio('./assets/sfx_bigwin.mp3?v=1');
+
+            // Win sound (cash register)
+            audio.sfx_win = new Audio('./assets/modestas123123-cash-register-kaching-sound-effect-125042.mp3?v=1');
+        }
+
+        function playSound(soundName) {
+            if (gameState.sfxMuted) return;
+            const sound = audio[soundName];
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play().catch(() => {});
+            }
+        }
+
+        function playMusic(track) {
+            if (gameState.musicMuted) return;
+
+            // Stop all music first
+            if (audio.music_base) {
+                audio.music_base.pause();
+                audio.music_base.currentTime = 0;
+            }
+            if (audio.music_freespins) {
+                audio.music_freespins.pause();
+                audio.music_freespins.currentTime = 0;
+            }
+
+            // Play requested track
+            if (track === 'base' && audio.music_base) {
+                audio.music_base.play().catch(() => {});
+            } else if (track === 'freespins' && audio.music_freespins) {
+                audio.music_freespins.play().catch(() => {});
+            }
+        }
+
+        function stopMusic() {
+            if (audio.music_base) {
+                audio.music_base.pause();
+                audio.music_base.currentTime = 0;
+            }
+            if (audio.music_freespins) {
+                audio.music_freespins.pause();
+                audio.music_freespins.currentTime = 0;
+            }
+        }
+
+        // ==================== IMAGE PRELOADING ====================
+        const imageCache = {};
+
+        function preloadImages() {
+            return new Promise((resolve) => {
+                // Images with default version 1
+                const imagesV1 = [
+                    'bg_main.webp',
+                    'stonertray.webp',
+                    'kitchentray.webp',
+                    'fs_pick_order.webp',
+                    'fs_pick_kitchen.webp',
+                    'win_big_text.webp',
+                    'win_mega_text.webp',
+                    'win_epic_text.webp',
+                    'sprite_fry.webp',
+                    'sprite_ketchup.webp',
+                    'sprite_mustard.webp',
+                    'sprite_napkin.webp',
+                    'sprite_nugget.webp',
+                    'sprite_onionring.webp'
+                ];
+
+                // Images with version 2 (updated banners)
+                const imagesV2 = [
+                    'order.webp',
+                    'kitchen.webp'
+                ];
+
+                const images = imagesV1.map(f => ({ file: f, version: 1 }))
+                    .concat(imagesV2.map(f => ({ file: f, version: 2 })));
+
+                // Add all symbol images (with versions)
+                const symbolImages = [];
+                const updatedSymbolsV2 = ['fries', 'nuggets', 'nachos'];
+                const updatedSymbolsV3 = ['milkshake'];
+                SYMBOLS.forEach(sym => {
+                    if (sym === 'scatter') {
+                        symbolImages.push({ file: 'sym_scatter.webp', version: 1 });
+                    } else {
+                        // Updated symbols use v=2 or v=3
+                        const version = updatedSymbolsV3.includes(sym) ? 3 : updatedSymbolsV2.includes(sym) ? 2 : 1;
+                        symbolImages.push({ file: `sym_${sym}_order.webp`, version: version });
+                        // burger_kitchen updated to v=3
+                        const kitchenVersion = sym === 'burger' ? 3 : version;
+                        symbolImages.push({ file: `sym_${sym}_kitchen.webp`, version: kitchenVersion });
+                    }
+                });
+
+                let loaded = 0;
+                const allImages = images.concat(symbolImages);
+                const total = allImages.length;
+
+                allImages.forEach(({ file, version }) => {
+                    const img = new Image();
+                    img.onload = img.onerror = () => {
+                        loaded++;
+                        imageCache[file] = img;
+                        if (loaded >= total) {
+                            resolve();
+                        }
+                    };
+                    img.src = `./assets/${file}?v=${version}`;
+                });
+            });
+        }
+
+        // ==================== GRID RENDERING ====================
+        // Number of symbols in each reel strip - needs to be tall enough for continuous scrolling
+        const STRIP_LENGTH = 30;
+
+        function createGrid() {
+            const gridWrapper = document.getElementById('grid-wrapper');
+            gridWrapper.innerHTML = '';
+
+            // Create ORDER SIDE (columns 0-2)
+            const orderSet = document.createElement('div');
+            orderSet.className = 'reel-set order-side';
+
+            const orderBanner = document.createElement('img');
+            orderBanner.className = 'reel-set-banner';
+            orderBanner.src = './assets/order.webp?v=2';
+            orderBanner.alt = 'The Order';
+            orderSet.appendChild(orderBanner);
+
+            const orderGroup = document.createElement('div');
+            orderGroup.className = 'reel-group';
+
+            for (let col = 0; col < 3; col++) {
+                const reelColumn = createReelColumn(col, 'order-glow');
+                orderGroup.appendChild(reelColumn);
+            }
+            orderSet.appendChild(orderGroup);
+            gridWrapper.appendChild(orderSet);
+
+            // Wall divider between the two sides
+            const wallDivider = document.createElement('div');
+            wallDivider.className = 'wall-divider';
+            gridWrapper.appendChild(wallDivider);
+
+            // Create KITCHEN SIDE (columns 3-5)
+            const kitchenSet = document.createElement('div');
+            kitchenSet.className = 'reel-set kitchen-side';
+
+            const kitchenBanner = document.createElement('img');
+            kitchenBanner.className = 'reel-set-banner';
+            kitchenBanner.src = './assets/kitchen.webp?v=2';
+            kitchenBanner.alt = 'The Kitchen';
+            kitchenSet.appendChild(kitchenBanner);
+
+            const kitchenGroup = document.createElement('div');
+            kitchenGroup.className = 'reel-group';
+
+            for (let col = 3; col < 6; col++) {
+                const reelColumn = createReelColumn(col, 'kitchen-glow');
+                kitchenGroup.appendChild(reelColumn);
+            }
+            kitchenSet.appendChild(kitchenGroup);
+            gridWrapper.appendChild(kitchenSet);
+        }
+
+        // Helper to create a single reel column with its strip
+        function createReelColumn(col, glowClass) {
+            const reelColumn = document.createElement('div');
+            reelColumn.className = 'reel-column';
+            reelColumn.id = `reel-${col}`;
+
+            const reelStrip = document.createElement('div');
+            reelStrip.className = 'reel-strip';
+            reelStrip.id = `strip-${col}`;
+
+            // Create symbol cells in the strip
+            for (let i = 0; i < STRIP_LENGTH; i++) {
+                const cell = document.createElement('div');
+                cell.className = `symbol-cell ${glowClass}`;
+                cell.dataset.col = col;
+                cell.dataset.stripIndex = i;
+                cell.id = `cell-${col}-${i}`;
+                reelStrip.appendChild(cell);
+            }
+
+            reelColumn.appendChild(reelStrip);
+            return reelColumn;
+        }
+
+        function getSymbolImage(symbol, col) {
+            let symbolUrl;
+            if (symbol === 'scatter') {
+                symbolUrl = `url('./assets/sym_scatter.webp?v=1')`;
+            } else {
+                // During free spins, use the selected mode for all columns
+                let variant;
+                if (gameState.freeSpins.active && gameState.freeSpins.mode) {
+                    variant = gameState.freeSpins.mode;
+                } else {
+                    // Normal play: left 3 cols = order, right 3 cols = kitchen
+                    variant = col < 3 ? 'order' : 'kitchen';
+                }
+                // Updated symbols use v=2 or v=3
+                const updatedSymbolsV2 = ['fries', 'nuggets', 'nachos'];
+                const updatedSymbolsV3 = ['milkshake'];
+                let version = updatedSymbolsV3.includes(symbol) ? 3 : updatedSymbolsV2.includes(symbol) ? 2 : 1;
+                // burger_kitchen updated to v=3
+                if (symbol === 'burger' && variant === 'kitchen') version = 3;
+                symbolUrl = `url('./assets/sym_${symbol}_${variant}.webp?v=${version}')`;
+            }
+
+            // Dark overlay to mute the tray (40% black)
+            const darkOverlay = `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4))`;
+
+            // Get tray background based on column
+            const trayUrl = col < 3
+                ? `url('./assets/stonertray.webp?v=1')`
+                : `url('./assets/kitchentray.webp?v=1')`;
+
+            // Return all three layers: symbol on top, dark overlay in middle, tray at bottom
+            return `${symbolUrl}, ${darkOverlay}, ${trayUrl}`;
+        }
+
+        // Get symbol-specific background size
+        function getSymbolSize(symbol, col) {
+            const variant = col < 3 ? 'order' : 'kitchen';
+            if (symbol === 'burger' && variant === 'order') {
+                return '75%, 100%, 100%';
+            }
+            return '82%, 100%, 100%';
+        }
+
+        // Set a cell's symbol image
+        function setCellSymbol(cell, symbol, col) {
+            cell.style.backgroundImage = getSymbolImage(symbol, col);
+            cell.style.backgroundSize = getSymbolSize(symbol, col);
+            cell.dataset.symbol = symbol;
+        }
+
+        // Render the final grid state - shows cells 0, 1, 2 with translateY(0)
+        function renderGrid() {
+            for (let col = 0; col < CONFIG.REELS; col++) {
+                const strip = document.getElementById(`strip-${col}`);
+                // Position strip so cells 0, 1, 2 are visible
+                strip.style.transform = 'translateY(0)';
+
+                // Set the visible symbols (cells 0, 1, 2)
+                for (let row = 0; row < CONFIG.ROWS; row++) {
+                    const cell = document.getElementById(`cell-${col}-${row}`);
+                    const symbol = gameState.grid[col][row];
+                    setCellSymbol(cell, symbol, col);
+                }
+
+                // Fill rest of strip with random symbols for potential spins
+                for (let i = CONFIG.ROWS; i < STRIP_LENGTH; i++) {
+                    const cell = document.getElementById(`cell-${col}-${i}`);
+                    const symbol = getRandomSymbol();
+                    setCellSymbol(cell, symbol, col);
+                }
+            }
+        }
+
+        // Get random food symbol for spinning display
+        function getRandomSymbol() {
+            const foodSymbols = SYMBOLS.filter(s => s !== 'wild' && s !== 'scatter');
+            return foodSymbols[Math.floor(Math.random() * foodSymbols.length)];
+        }
+
+        // Fill a reel strip with random symbols for spinning
+        function fillStripWithRandomSymbols(col) {
+            for (let i = 0; i < STRIP_LENGTH; i++) {
+                const cell = document.getElementById(`cell-${col}-${i}`);
+                const symbol = getRandomSymbol();
+                setCellSymbol(cell, symbol, col);
+            }
+        }
+
+        // Get current cell height and gap from CSS
+        function getCellDimensions() {
+            const cell = document.querySelector('.symbol-cell');
+            const styles = getComputedStyle(cell);
+            const height = parseFloat(styles.height);
+            const wrapper = document.getElementById('grid-wrapper');
+            const gap = parseFloat(getComputedStyle(wrapper).gap) || 4;
+            return { height, gap };
+        }
+
+        // ==================== MOCK SPIN LOGIC ====================
+        function generateSpinResult() {
+            const grid = [];
+            const foodSymbols = SYMBOLS.filter(s => s !== 'wild' && s !== 'scatter');
+
+            // Determine if this spin should be a win (~30% chance)
+            const forceWin = Math.random() < 0.3;
+
+            // Initialize grid with food symbols
+            for (let col = 0; col < CONFIG.REELS; col++) {
+                grid[col] = [];
+                for (let row = 0; row < CONFIG.ROWS; row++) {
+                    grid[col][row] = foodSymbols[Math.floor(Math.random() * foodSymbols.length)];
+                }
+            }
+
+            // Scatter placement: ~1.5% chance per cell (roughly 1 scatter every 50-80 spins on average)
+            // Each cell has independent chance, so scatters can appear 0, 1, 2, 3+ times
+            const scatterChance = 0.015;
+            for (let col = 0; col < CONFIG.REELS; col++) {
+                for (let row = 0; row < CONFIG.ROWS; row++) {
+                    if (Math.random() < scatterChance) {
+                        grid[col][row] = 'scatter';
+                    }
+                }
+            }
+
+            // Count scatters currently in grid
+            let gridScatterCount = 0;
+            for (let col = 0; col < CONFIG.REELS; col++) {
+                for (let row = 0; row < CONFIG.ROWS; row++) {
+                    if (grid[col][row] === 'scatter') gridScatterCount++;
+                }
+            }
+
+            // Force a winning combination if needed (but not if we have 3+ scatters triggering free spins)
+            if (forceWin && gridScatterCount < 3) {
+                const winSymbol = foodSymbols[Math.floor(Math.random() * foodSymbols.length)];
+                const paylineIndex = Math.floor(Math.random() * PAYLINES.length);
+                const payline = PAYLINES[paylineIndex];
+                const winLength = 3 + Math.floor(Math.random() * 3); // 3-5 symbols
+
+                for (let col = 0; col < winLength && col < CONFIG.REELS; col++) {
+                    const row = payline[col];
+                    grid[col][row] = winSymbol;
+                }
+            }
+
+            // Add wilds on reels 2-5 (indices 1-4)
+            // ~15% chance per cell = roughly 1-2 wilds every 5-8 spins
+            const wildChance = (gameState.freeSpins.active && gameState.freeSpins.mode === 'order') ? 0.25 : 0.15;
+            for (let col = 1; col < 5; col++) {
+                for (let row = 0; row < CONFIG.ROWS; row++) {
+                    if (grid[col][row] !== 'scatter' && Math.random() < wildChance) {
+                        grid[col][row] = 'wild';
+                    }
+                }
+            }
+
+            if (CONFIG.DEBUG) {
+                console.log('Generated grid:', grid);
+            }
+
+            return grid;
+        }
+
+        // ==================== WIN EVALUATION ====================
+        function evaluateWins() {
+            const results = {
+                paylineWins: [],
+                scatterWin: null,
+                totalWin: 0
+            };
+
+            const bet = CONFIG.BET_LEVELS[gameState.betIndex];
+
+            // Count scatters
+            let scatterCount = 0;
+            const scatterPositions = [];
+            for (let col = 0; col < CONFIG.REELS; col++) {
+                for (let row = 0; row < CONFIG.ROWS; row++) {
+                    if (gameState.grid[col][row] === 'scatter') {
+                        scatterCount++;
+                        scatterPositions.push({ col, row });
+                    }
+                }
+            }
+
+            if (scatterCount >= 3) {
+                const scatterMultiplier = SCATTER_PAYS[scatterCount] || SCATTER_PAYS[6];
+                results.scatterWin = {
+                    count: scatterCount,
+                    multiplier: scatterMultiplier,
+                    win: bet * scatterMultiplier,
+                    positions: scatterPositions
+                };
+                results.totalWin += results.scatterWin.win;
+            }
+
+            // Check each payline
+            PAYLINES.forEach((payline, index) => {
+                const lineSymbols = payline.map((row, col) => gameState.grid[col][row]);
+
+                // Get first non-wild symbol
+                let matchSymbol = null;
+                for (const sym of lineSymbols) {
+                    if (sym !== 'wild' && sym !== 'scatter') {
+                        matchSymbol = sym;
+                        break;
+                    }
+                }
+
+                if (!matchSymbol) return; // All wilds or scatters, no win
+
+                // Count matching symbols from left
+                let matchCount = 0;
+                const winningPositions = [];
+
+                for (let col = 0; col < CONFIG.REELS; col++) {
+                    const sym = lineSymbols[col];
+                    if (sym === matchSymbol || sym === 'wild') {
+                        matchCount++;
+                        winningPositions.push({ col, row: payline[col] });
+                    } else {
+                        break;
+                    }
+                }
+
+                if (matchCount >= 3 && PAYTABLE[matchSymbol]) {
+                    const multiplier = PAYTABLE[matchSymbol][matchCount] || 0;
+                    let winAmount = bet * multiplier;
+
+                    // Apply x3 multiplier during "kitchen" free spins mode
+                    if (gameState.freeSpins.active && gameState.freeSpins.mode === 'kitchen') {
+                        winAmount *= 3;
+                    }
+
+                    results.paylineWins.push({
+                        paylineIndex: index,
+                        symbol: matchSymbol,
+                        count: matchCount,
+                        multiplier: multiplier,
+                        win: winAmount,
+                        positions: winningPositions
+                    });
+                    results.totalWin += winAmount;
+                }
+            });
+
+            if (CONFIG.DEBUG) {
+                console.log('Win evaluation:', results);
+            }
+
+            return results;
+        }
+
+        // ==================== ANIMATIONS ====================
+
+        // Spin state for each reel
+        const reelState = [];
+
+        async function animateSpin() {
+            const spinBtn = document.getElementById('spin-btn');
+            spinBtn.classList.add('spinning');
+
+            // Generate final result first
+            gameState.grid = generateSpinResult();
+
+            const { height, gap } = getCellDimensions();
+            const cellStep = height + gap; // Distance for one symbol
+
+            // Spin parameters
+            const FULL_SPEED = 35; // Pixels per frame at full speed
+            const FULL_SPIN_TIME = 500; // ms at full speed before first reel starts stopping
+            const STOP_STAGGER = 250; // ms between each reel starting to decelerate
+
+            // Initialize each reel
+            for (let col = 0; col < CONFIG.REELS; col++) {
+                const strip = document.getElementById(`strip-${col}`);
+
+                // Fill entire strip with random symbols
+                fillStripWithRandomSymbols(col);
+
+                // Start position: deep in the strip (large negative translateY)
+                // This shows high-indexed cells, and as we increase translateY toward 0,
+                // lower-indexed cells come into view (symbols scroll DOWN)
+                const startPosition = -(STRIP_LENGTH - 5) * cellStep;
+
+                reelState[col] = {
+                    strip: strip,
+                    position: startPosition, // Current translateY value
+                    phase: 'spinning', // spinning, decelerating, bouncing, stopped
+                    targetPosition: 0, // Where we need to land (translateY = 0 shows cells 0,1,2)
+                    velocity: FULL_SPEED,
+                    decelerateStartTime: null,
+                    bounceStartTime: null,
+                    bounceStartPos: null
+                };
+
+                strip.style.transform = `translateY(${startPosition}px)`;
+            }
+
+            // Calculate when each reel starts decelerating
+            const decelerateTimes = [];
+            for (let col = 0; col < CONFIG.REELS; col++) {
+                decelerateTimes[col] = FULL_SPIN_TIME + (col * STOP_STAGGER);
+            }
+
+            const startTime = performance.now();
+
+            return new Promise(resolve => {
+                function animate(currentTime) {
+                    const elapsed = currentTime - startTime;
+                    let allStopped = true;
+
+                    for (let col = 0; col < CONFIG.REELS; col++) {
+                        const state = reelState[col];
+
+                        if (state.phase === 'stopped') continue;
+                        allStopped = false;
+
+                        // === SPINNING PHASE ===
+                        if (state.phase === 'spinning') {
+                            // Check if it's time to start decelerating
+                            if (elapsed >= decelerateTimes[col]) {
+                                state.phase = 'decelerating';
+                                state.decelerateStartTime = currentTime;
+
+                                // Place final symbols in cells 0, 1, 2 so they're ready when we land
+                                for (let row = 0; row < CONFIG.ROWS; row++) {
+                                    const cell = document.getElementById(`cell-${col}-${row}`);
+                                    setCellSymbol(cell, gameState.grid[col][row], col);
+                                }
+                            } else {
+                                // Full speed scrolling - move toward 0 (symbols scroll down)
+                                state.position += state.velocity;
+
+                                // Seamless loop: when we get close to 0, reset back and refill
+                                if (state.position >= -3 * cellStep) {
+                                    state.position = -(STRIP_LENGTH - 5) * cellStep;
+                                    fillStripWithRandomSymbols(col);
+                                }
+                            }
+                        }
+
+                        // === DECELERATING PHASE ===
+                        if (state.phase === 'decelerating') {
+                            const distanceToTarget = state.targetPosition - state.position;
+
+                            if (distanceToTarget <= 0.5) {
+                                // Close enough - start bounce
+                                state.phase = 'bouncing';
+                                state.bounceStartTime = currentTime;
+                                state.bounceStartPos = state.position;
+                            } else {
+                                // Ease out - move a fraction of remaining distance
+                                // This creates natural deceleration
+                                const easeFactor = 0.12;
+                                const speed = Math.max(distanceToTarget * easeFactor, 2);
+                                state.position += speed;
+
+                                // Clamp to not overshoot
+                                if (state.position > state.targetPosition) {
+                                    state.position = state.targetPosition;
+                                }
+                            }
+                        }
+
+                        // === BOUNCING PHASE ===
+                        if (state.phase === 'bouncing') {
+                            const bounceElapsed = currentTime - state.bounceStartTime;
+                            const bounceDuration = 150;
+                            const overshoot = 18; // pixels to overshoot past target
+
+                            if (bounceElapsed >= bounceDuration) {
+                                // Bounce complete
+                                state.phase = 'stopped';
+                                state.position = state.targetPosition;
+
+                                // Play scatter sound
+                                for (let row = 0; row < CONFIG.ROWS; row++) {
+                                    if (gameState.grid[col][row] === 'scatter') {
+                                        playSound('sfx_scatter');
+                                    }
+                                }
+                            } else {
+                                // Bounce curve: overshoot then settle
+                                // t goes from 0 to 1 over duration
+                                const t = bounceElapsed / bounceDuration;
+                                // Damped sine wave for bounce: overshoot, come back, settle
+                                const bounce = Math.sin(t * Math.PI) * overshoot * (1 - t * 0.5);
+                                state.position = state.targetPosition + bounce;
+                            }
+                        }
+
+                        // Apply position
+                        state.strip.style.transform = `translateY(${state.position}px)`;
+                    }
+
+                    if (allStopped) {
+                        spinBtn.classList.remove('spinning');
+                        resolve();
+                    } else {
+                        requestAnimationFrame(animate);
+                    }
+                }
+
+                requestAnimationFrame(animate);
+            });
+        }
+
+        function highlightWinningCells(positions) {
+            positions.forEach(pos => {
+                // In the new strip structure, row maps directly to strip index 0-2
+                const cell = document.getElementById(`cell-${pos.col}-${pos.row}`);
+                if (cell) {
+                    cell.classList.add('winning');
+                }
+            });
+        }
+
+        function clearWinningHighlights() {
+            const cells = document.querySelectorAll('.symbol-cell.winning');
+            cells.forEach(cell => cell.classList.remove('winning'));
+        }
+
+        function showPopupWin(amount) {
+            const popup = document.getElementById('popup-win');
+            popup.textContent = `+$${amount.toFixed(2)}`;
+            popup.style.display = 'block';
+
+            setTimeout(() => {
+                popup.style.display = 'none';
+            }, 1500);
+        }
+
+        async function showWinCelebration(totalWin) {
+            const bet = CONFIG.BET_LEVELS[gameState.betIndex];
+            const multiplier = totalWin / bet;
+
+            let winType = null;
+            let textImage = '';
+            let subtitle = '';
+
+            if (multiplier >= 50) {
+                winType = 'epic';
+                textImage = './assets/win_epic_text.webp?v=1';
+                subtitle = 'DUUUUUDE... ALL YOU CAN EAT!';
+            } else if (multiplier >= 30) {
+                winType = 'mega';
+                textImage = './assets/win_mega_text.webp?v=1';
+                subtitle = 'DUUUDE... SUPERSIZE IT!';
+            } else if (multiplier >= 15) {
+                winType = 'big';
+                textImage = './assets/win_big_text.webp?v=1';
+                subtitle = 'DUDE... NICE ORDER!';
+            }
+
+            if (!winType) return;
+
+            playSound('sfx_bigwin');
+
+            const celebration = document.getElementById('win-celebration');
+            const textImg = document.getElementById('win-text-img');
+            const amountDisplay = document.getElementById('celebration-amount');
+            const subtitleDisplay = document.getElementById('win-subtitle');
+
+            textImg.src = textImage;
+            amountDisplay.textContent = `$${totalWin.toFixed(2)}`;
+            subtitleDisplay.textContent = subtitle;
+
+            celebration.classList.add('active');
+
+            // Screen shake
+            const container = document.getElementById('game-container');
+            if (winType === 'epic') {
+                container.classList.add('screen-shake-heavy');
+            } else {
+                container.classList.add('screen-shake');
+            }
+
+            // Spawn flying sprites
+            const sprites = ['sprite_fry.webp', 'sprite_onionring.webp', 'sprite_nugget.webp', 'sprite_ketchup.webp', 'sprite_mustard.webp', 'sprite_napkin.webp'];
+            const spriteCount = winType === 'epic' ? 30 : winType === 'mega' ? 20 : 10;
+
+            for (let i = 0; i < spriteCount; i++) {
+                setTimeout(() => {
+                    createFlyingSprite(sprites[Math.floor(Math.random() * sprites.length)]);
+                }, i * 100);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            container.classList.remove('screen-shake', 'screen-shake-heavy');
+            celebration.classList.remove('active');
+        }
+
+        function createFlyingSprite(spriteFile) {
+            const sprite = document.createElement('div');
+            sprite.className = 'flying-sprite';
+            sprite.style.backgroundImage = `url('./assets/${spriteFile}?v=1')`;
+
+            const startX = window.innerWidth / 2;
+            const startY = window.innerHeight / 2;
+
+            sprite.style.left = startX + 'px';
+            sprite.style.top = startY + 'px';
+
+            document.body.appendChild(sprite);
+
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 300 + Math.random() * 400;
+            const endX = startX + Math.cos(angle) * distance;
+            const endY = startY + Math.sin(angle) * distance;
+            const rotation = Math.random() * 720 - 360;
+
+            sprite.animate([
+                { transform: 'translate(0, 0) rotate(0deg) scale(0)', opacity: 1 },
+                { transform: `translate(${endX - startX}px, ${endY - startY}px) rotate(${rotation}deg) scale(1.5)`, opacity: 0 }
+            ], {
+                duration: 1500,
+                easing: 'ease-out'
+            }).onfinish = () => sprite.remove();
+        }
+
+        // ==================== FREE SPINS ====================
+        async function triggerFreeSpins(scatterCount) {
+            const spins = scatterCount >= 4 ? 15 : 10;
+
+            playSound('sfx_fs_trigger');
+
+            // Show trigger screen
+            const triggerScreen = document.getElementById('fs-trigger-screen');
+            document.getElementById('trigger-spins-amount').textContent = spins;
+            triggerScreen.classList.add('active');
+
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            triggerScreen.classList.remove('active');
+
+            // Show pick screen
+            const pickScreen = document.getElementById('fs-pick-screen');
+            pickScreen.classList.add('active');
+
+            const choice = await new Promise(resolve => {
+                document.getElementById('pick-order').onclick = () => {
+                    playSound('sfx_button');
+                    resolve('order');
+                };
+                document.getElementById('pick-kitchen').onclick = () => {
+                    playSound('sfx_button');
+                    resolve('kitchen');
+                };
+            });
+
+            pickScreen.classList.remove('active');
+
+            // Initialize free spins state
+            gameState.freeSpins = {
+                active: true,
+                remaining: spins,
+                totalWin: 0,
+                mode: choice
+            };
+
+            // Show mode indicator
+            const modeIndicator = document.getElementById('mode-indicator');
+            modeIndicator.textContent = choice === 'order' ? 'THE ORDER MODE - Extra Wilds!' : 'THE KITCHEN MODE - x3 Multiplier!';
+            modeIndicator.className = choice === 'order' ? 'order-mode' : 'kitchen-mode';
+            modeIndicator.style.display = 'block';
+
+            // Show counter
+            document.getElementById('fs-counter').style.display = 'block';
+            updateFreeSpinsUI();
+
+            // Switch music
+            playMusic('freespins');
+
+            // Run free spins
+            await runFreeSpins();
+        }
+
+        async function runFreeSpins() {
+            while (gameState.freeSpins.remaining > 0) {
+                gameState.freeSpins.remaining--;
+                updateFreeSpinsUI();
+
+                await animateSpin();
+                const results = evaluateWins();
+
+                if (results.totalWin > 0) {
+                    gameState.freeSpins.totalWin += results.totalWin;
+                    updateFreeSpinsUI();
+
+                    // Highlight wins
+                    const allPositions = [];
+                    results.paylineWins.forEach(pw => allPositions.push(...pw.positions));
+                    if (results.scatterWin) allPositions.push(...results.scatterWin.positions);
+                    highlightWinningCells(allPositions);
+
+                    playSound('sfx_win');
+
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    clearWinningHighlights();
+                }
+
+                // Check for retrigger
+                if (results.scatterWin && results.scatterWin.count >= 3) {
+                    gameState.freeSpins.remaining += 5;
+                    // Show brief retrigger message
+                    showPopupWin(5); // Reusing popup for "+5 SPINS"
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            // End free spins
+            await endFreeSpins();
+        }
+
+        function updateFreeSpinsUI() {
+            document.getElementById('spins-left').textContent = gameState.freeSpins.remaining;
+            document.getElementById('fs-win-amount').textContent = gameState.freeSpins.totalWin.toFixed(2);
+        }
+
+        async function endFreeSpins() {
+            // Hide counter and mode indicator
+            document.getElementById('fs-counter').style.display = 'none';
+            document.getElementById('mode-indicator').style.display = 'none';
+
+            // Show end screen
+            const endScreen = document.getElementById('fs-end-screen');
+            document.getElementById('fs-total-win').textContent = `$${gameState.freeSpins.totalWin.toFixed(2)}`;
+            endScreen.classList.add('active');
+
+            // Add win to balance
+            gameState.balance += gameState.freeSpins.totalWin;
+            updateUI();
+
+            await new Promise(resolve => {
+                document.getElementById('fs-continue').onclick = () => {
+                    playSound('sfx_button');
+                    resolve();
+                };
+            });
+
+            endScreen.classList.remove('active');
+
+            // Reset free spins state
+            gameState.freeSpins = {
+                active: false,
+                remaining: 0,
+                totalWin: 0,
+                mode: null
+            };
+
+            // Switch music back
+            playMusic('base');
+        }
+
+        // ==================== MAIN SPIN FUNCTION ====================
+        async function spin() {
+            if (gameState.isSpinning) return;
+            if (gameState.freeSpins.active) return;
+
+            const bet = CONFIG.BET_LEVELS[gameState.betIndex];
+
+            if (gameState.balance < bet) {
+                alert('Insufficient balance!');
+                return;
+            }
+
+            gameState.isSpinning = true;
+            gameState.balance -= bet;
+            updateUI();
+            document.getElementById('spin-btn').disabled = true;
+
+            clearWinningHighlights();
+
+            await animateSpin();
+
+            const results = evaluateWins();
+
+            if (results.totalWin > 0) {
+                // Highlight winning positions
+                const allPositions = [];
+                results.paylineWins.forEach(pw => allPositions.push(...pw.positions));
+                if (results.scatterWin) allPositions.push(...results.scatterWin.positions);
+                highlightWinningCells(allPositions);
+
+                gameState.balance += results.totalWin;
+                document.getElementById('last-win').textContent = results.totalWin.toFixed(2);
+                updateUI();
+
+                playSound('sfx_win');
+                showPopupWin(results.totalWin);
+
+                // Show celebration for big wins
+                await showWinCelebration(results.totalWin);
+
+                await new Promise(resolve => setTimeout(resolve, CONFIG.WIN_DISPLAY_TIME));
+                clearWinningHighlights();
+            } else {
+                document.getElementById('last-win').textContent = '0.00';
+            }
+
+            // Check for free spins trigger
+            if (results.scatterWin && results.scatterWin.count >= 3) {
+                await triggerFreeSpins(results.scatterWin.count);
+            }
+
+            gameState.isSpinning = false;
+            document.getElementById('spin-btn').disabled = false;
+        }
+
+        // ==================== UI UPDATES ====================
+        function updateUI() {
+            document.getElementById('balance').textContent = gameState.balance.toFixed(2);
+            document.getElementById('bet-amount').textContent = CONFIG.BET_LEVELS[gameState.betIndex].toFixed(2);
+        }
+
+        // ==================== EVENT HANDLERS ====================
+        function setupEventListeners() {
+            // Spin button
+            document.getElementById('spin-btn').addEventListener('click', spin);
+
+            // Bet controls
+            document.getElementById('bet-up').addEventListener('click', () => {
+                playSound('sfx_button');
+                if (gameState.betIndex < CONFIG.BET_LEVELS.length - 1) {
+                    gameState.betIndex++;
+                    updateUI();
+                }
+            });
+
+            document.getElementById('bet-down').addEventListener('click', () => {
+                playSound('sfx_button');
+                if (gameState.betIndex > 0) {
+                    gameState.betIndex--;
+                    updateUI();
+                }
+            });
+
+            // Mute controls
+            document.getElementById('music-mute').addEventListener('click', () => {
+                gameState.musicMuted = !gameState.musicMuted;
+                const btn = document.getElementById('music-mute');
+                btn.classList.toggle('muted', gameState.musicMuted);
+
+                if (gameState.musicMuted) {
+                    stopMusic();
+                } else {
+                    playMusic(gameState.freeSpins.active ? 'freespins' : 'base');
+                }
+            });
+
+            document.getElementById('sfx-mute').addEventListener('click', () => {
+                gameState.sfxMuted = !gameState.sfxMuted;
+                const btn = document.getElementById('sfx-mute');
+                btn.classList.toggle('muted', gameState.sfxMuted);
+            });
+
+            // Spacebar to spin
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && !gameState.isSpinning && !gameState.freeSpins.active) {
+                    e.preventDefault();
+                    spin();
+                }
+            });
+
+            // First click to start music
+            document.addEventListener('click', () => {
+                if (!gameState.musicMuted && audio.music_base && audio.music_base.paused) {
+                    playMusic('base');
+                }
+            }, { once: true });
+        }
+
+        // ==================== INITIALIZATION ====================
+        async function init() {
+            if (CONFIG.DEBUG) {
+                console.log('Debug mode enabled');
+            }
+
+            initAudio();
+            await preloadImages();
+
+            createGrid();
+
+            // Initialize with random symbols for the visible 3 rows
+            gameState.grid = [];
+            const foodSymbols = SYMBOLS.filter(s => s !== 'wild' && s !== 'scatter');
+            for (let col = 0; col < CONFIG.REELS; col++) {
+                gameState.grid[col] = [];
+                for (let row = 0; row < CONFIG.ROWS; row++) {
+                    gameState.grid[col][row] = foodSymbols[Math.floor(Math.random() * foodSymbols.length)];
+                }
+            }
+            // renderGrid fills visible cells and the rest of each strip
+            renderGrid();
+
+            updateUI();
+            setupEventListeners();
+
+            // Hide loading screen
+            document.getElementById('loading-screen').style.display = 'none';
+
+            if (CONFIG.DEBUG) {
+                console.log('Game initialized');
+                console.log('Paylines:', PAYLINES);
+                console.log('Paytable:', PAYTABLE);
+            }
+        }
+
+        // Start the game
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
