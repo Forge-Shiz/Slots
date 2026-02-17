@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+    <meta name="googlebot" content="noindex, nofollow">
+    <title>Grease Burger - Admin Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        #access-denied {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80vh;
+            text-align: center;
+        }
+        #access-denied h1 { color: #f85149; font-size: 48px; margin-bottom: 20px; }
+        #access-denied p { color: #8b949e; font-size: 18px; }
+        #dashboard { display: none; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #21262d;
+        }
+        header h1 { color: #58a6ff; font-size: 24px; }
+        .refresh-info { color: #8b949e; font-size: 12px; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: #161b22;
+            border: 1px solid #21262d;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .stat-card .label { color: #8b949e; font-size: 12px; text-transform: uppercase; margin-bottom: 8px; }
+        .stat-card .value { color: #f0f6fc; font-size: 28px; font-weight: bold; }
+        .stat-card .sub { color: #8b949e; font-size: 12px; margin-top: 5px; }
+        .stat-card.green .value { color: #3fb950; }
+        .stat-card.red .value { color: #f85149; }
+        .stat-card.orange .value { color: #d29922; }
+        .stat-card.purple .value { color: #a371f7; }
+        .section {
+            background: #161b22;
+            border: 1px solid #21262d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            color: #f0f6fc;
+            font-size: 16px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #21262d;
+        }
+        .chart-container {
+            height: 150px;
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            padding: 10px 0;
+        }
+        .chart-bar {
+            flex: 1;
+            background: #238636;
+            border-radius: 3px 3px 0 0;
+            min-height: 4px;
+            position: relative;
+        }
+        .chart-bar:hover { background: #2ea043; }
+        .chart-bar .tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #0d1117;
+            border: 1px solid #30363d;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            display: none;
+        }
+        .chart-bar:hover .tooltip { display: block; }
+        .chart-labels {
+            display: flex;
+            gap: 4px;
+            margin-top: 5px;
+        }
+        .chart-labels span {
+            flex: 1;
+            text-align: center;
+            font-size: 10px;
+            color: #8b949e;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            text-align: left;
+            padding: 10px 12px;
+            border-bottom: 1px solid #21262d;
+        }
+        th { color: #8b949e; font-weight: 500; font-size: 12px; text-transform: uppercase; }
+        td { color: #c9d1d9; font-size: 13px; }
+        tr:hover td { background: #1c2128; }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .badge-big { background: #238636; color: #fff; }
+        .badge-mega { background: #9e6a03; color: #fff; }
+        .badge-epic { background: #8957e5; color: #fff; }
+        .badge-mobile { background: #1f6feb; color: #fff; }
+        .badge-desktop { background: #6e7681; color: #fff; }
+        .positive { color: #3fb950; }
+        .negative { color: #f85149; }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+        .symbol-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .symbol-item {
+            background: #21262d;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .symbol-item .count { color: #8b949e; margin-left: 5px; }
+        .loading { color: #8b949e; text-align: center; padding: 40px; }
+    </style>
+</head>
+<body>
+    <div id="access-denied">
+        <h1>Access Denied</h1>
+        <p>Invalid or missing access token.</p>
+    </div>
+
+    <div id="dashboard">
+        <header>
+            <h1>Grease Burger Analytics</h1>
+            <div class="refresh-info">Auto-refresh: <span id="countdown">30</span>s | Last: <span id="last-update">-</span></div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="label">Total Visits</div>
+                <div class="value" id="total-visits">-</div>
+                <div class="sub"><span id="unique-sessions">-</span> unique sessions</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Total Spins</div>
+                <div class="value" id="total-spins">-</div>
+                <div class="sub">Avg bet: $<span id="avg-bet">-</span></div>
+            </div>
+            <div class="stat-card green">
+                <div class="label">Total Wagered</div>
+                <div class="value">$<span id="total-wagered">-</span></div>
+            </div>
+            <div class="stat-card orange">
+                <div class="label">Total Won</div>
+                <div class="value">$<span id="total-won">-</span></div>
+            </div>
+            <div class="stat-card red">
+                <div class="label">House Edge</div>
+                <div class="value"><span id="house-edge">-</span>%</div>
+            </div>
+            <div class="stat-card purple">
+                <div class="label">Free Spins Rate</div>
+                <div class="value"><span id="fs-rate">-</span>%</div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card badge-big">
+                <div class="label">Big Wins (15x+)</div>
+                <div class="value" id="big-wins">-</div>
+            </div>
+            <div class="stat-card badge-mega">
+                <div class="label">Mega Wins (30x+)</div>
+                <div class="value" id="mega-wins">-</div>
+            </div>
+            <div class="stat-card badge-epic">
+                <div class="label">Epic Wins (50x+)</div>
+                <div class="value" id="epic-wins">-</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Spins Per Hour (Last 24h)</h2>
+            <div class="chart-container" id="hourly-chart"></div>
+            <div class="chart-labels" id="hourly-labels"></div>
+        </div>
+
+        <div class="grid-2">
+            <div class="section">
+                <h2>Top Winning Symbols</h2>
+                <div class="symbol-list" id="top-symbols">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+            <div class="section">
+                <h2>Recent Big Wins</h2>
+                <table id="bigwins-table">
+                    <thead><tr><th>Time</th><th>Tier</th><th>Amount</th></tr></thead>
+                    <tbody><tr><td colspan="3" class="loading">Loading...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Recent Sessions</h2>
+            <table id="sessions-table">
+                <thead><tr><th>Time</th><th>Device</th><th>Spins</th><th>Wagered</th><th>Won</th><th>Net</th></tr></thead>
+                <tbody><tr><td colspan="6" class="loading">Loading...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Check authentication
+        const VALID_PASSWORD = 'grease2024';
+        const hash = window.location.hash.slice(1);
+
+        if (hash !== VALID_PASSWORD) {
+            document.getElementById('access-denied').style.display = 'flex';
+            document.getElementById('dashboard').style.display = 'none';
+        } else {
+            document.getElementById('access-denied').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            initDashboard();
+        }
+
+        let countdown = 30;
+
+        function initDashboard() {
+            fetchData();
+            setInterval(() => {
+                countdown--;
+                document.getElementById('countdown').textContent = countdown;
+                if (countdown <= 0) {
+                    countdown = 30;
+                    fetchData();
+                }
+            }, 1000);
+        }
+
+        async function fetchData() {
+            try {
+                const [stats, sessions, bigwins] = await Promise.all([
+                    fetch('/api/stats').then(r => r.json()),
+                    fetch('/api/sessions?limit=20').then(r => r.json()),
+                    fetch('/api/bigwins?limit=10').then(r => r.json())
+                ]);
+
+                updateStats(stats);
+                updateSessions(sessions);
+                updateBigWins(bigwins);
+                document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+            } catch (err) {
+                console.error('Fetch error:', err);
+            }
+        }
+
+        function updateStats(stats) {
+            document.getElementById('total-visits').textContent = stats.totalVisits.toLocaleString();
+            document.getElementById('unique-sessions').textContent = stats.uniqueSessions.toLocaleString();
+            document.getElementById('total-spins').textContent = stats.totalSpins.toLocaleString();
+            document.getElementById('avg-bet').textContent = stats.avgBet;
+            document.getElementById('total-wagered').textContent = parseFloat(stats.totalWagered).toLocaleString();
+            document.getElementById('total-won').textContent = parseFloat(stats.totalWon).toLocaleString();
+            document.getElementById('house-edge').textContent = stats.houseEdge;
+            document.getElementById('fs-rate').textContent = stats.fsTriggerRate;
+            document.getElementById('big-wins').textContent = stats.bigWinCounts.big;
+            document.getElementById('mega-wins').textContent = stats.bigWinCounts.mega;
+            document.getElementById('epic-wins').textContent = stats.bigWinCounts.epic;
+
+            // Hourly chart
+            const chartContainer = document.getElementById('hourly-chart');
+            const labelsContainer = document.getElementById('hourly-labels');
+            chartContainer.innerHTML = '';
+            labelsContainer.innerHTML = '';
+
+            const hours = stats.spinsByHour;
+            const maxSpins = Math.max(...Object.values(hours), 1);
+
+            for (let i = 0; i < 24; i++) {
+                const count = hours[i] || 0;
+                const height = (count / maxSpins) * 100;
+                const bar = document.createElement('div');
+                bar.className = 'chart-bar';
+                bar.style.height = `${Math.max(height, 3)}%`;
+                bar.innerHTML = `<div class="tooltip">${i}:00 - ${count} spins</div>`;
+                chartContainer.appendChild(bar);
+
+                if (i % 4 === 0) {
+                    const label = document.createElement('span');
+                    label.textContent = `${i}:00`;
+                    label.style.flex = '4';
+                    labelsContainer.appendChild(label);
+                }
+            }
+
+            // Top symbols
+            const symbolsContainer = document.getElementById('top-symbols');
+            if (stats.topSymbols && stats.topSymbols.length > 0) {
+                symbolsContainer.innerHTML = stats.topSymbols.map(([sym, count]) =>
+                    `<div class="symbol-item">${sym}<span class="count">${count.toLocaleString()}</span></div>`
+                ).join('');
+            } else {
+                symbolsContainer.innerHTML = '<div class="loading">No data yet</div>';
+            }
+        }
+
+        function updateSessions(sessions) {
+            const tbody = document.querySelector('#sessions-table tbody');
+            if (!sessions || sessions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="loading">No sessions yet</td></tr>';
+                return;
+            }
+            tbody.innerHTML = sessions.map(s => {
+                const time = new Date(s.startTime).toLocaleString();
+                const deviceBadge = s.device === 'Mobile'
+                    ? '<span class="badge badge-mobile">Mobile</span>'
+                    : '<span class="badge badge-desktop">Desktop</span>';
+                const net = parseFloat(s.netResult);
+                const netClass = net >= 0 ? 'positive' : 'negative';
+                const netSign = net >= 0 ? '+' : '';
+                return `<tr>
+                    <td>${time}</td>
+                    <td>${deviceBadge}</td>
+                    <td>${s.spins}</td>
+                    <td>$${s.wagered.toFixed(2)}</td>
+                    <td>$${s.won.toFixed(2)}</td>
+                    <td class="${netClass}">${netSign}$${s.netResult}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function updateBigWins(bigwins) {
+            const tbody = document.querySelector('#bigwins-table tbody');
+            if (!bigwins || bigwins.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="loading">No big wins yet</td></tr>';
+                return;
+            }
+            tbody.innerHTML = bigwins.map(w => {
+                const time = new Date(w.timestamp).toLocaleString();
+                const tierBadge = `<span class="badge badge-${w.tier}">${w.tier.toUpperCase()}</span>`;
+                return `<tr>
+                    <td>${time}</td>
+                    <td>${tierBadge}</td>
+                    <td>$${w.amount.toFixed(2)}</td>
+                </tr>`;
+            }).join('');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+# Grease Burger Analytics Service
+# Copy to: /etc/systemd/system/grease-burger-analytics.service
+# Then run:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable grease-burger-analytics
+#   sudo systemctl start grease-burger-analytics
+
+[Unit]
+Description=Grease Burger Analytics Server
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/html/slots/grease-burger
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=grease-burger
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/html/slots/grease-burger/data
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
