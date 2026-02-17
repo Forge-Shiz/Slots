@@ -29,6 +29,8 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
+            overflow-x: hidden;
+            max-width: 100vw;
             font-family: 'SlotFont', Impact, 'Arial Black', sans-serif;
             background: var(--dark-blue);
         }
@@ -43,6 +45,7 @@
             background: transparent;
             position: relative;
             z-index: 1;
+            padding-bottom: 220px; /* Space for two-row controls */
         }
 
         /* Background video */
@@ -57,54 +60,9 @@
             pointer-events: none;
         }
 
-        /* Top UI Bar */
-        #top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 90%;
-            max-width: 1400px;
-            padding: 12px 30px;
-            background: rgba(10, 14, 26, 0.85);
-            border-radius: 10px;
-            margin-bottom: 15px;
-        }
-
-        .balance-display, .win-display {
-            color: #fff;
-            font-size: 18px;
-            text-shadow: 0 0 10px rgba(255,255,255,0.3);
-        }
-
-        .balance-display span, .win-display span {
-            color: var(--win-green);
-            font-size: 22px;
-        }
-
-        .mute-controls {
-            display: flex;
-            gap: 10px;
-        }
-
-        .mute-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 2px solid var(--primary-orange);
-            background: rgba(10, 14, 26, 0.8);
-            color: #fff;
-            font-size: 18px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .mute-btn:hover {
-            background: var(--primary-orange);
-        }
-
-        .mute-btn.muted {
-            opacity: 0.5;
-            border-color: #666;
+        /* Landscape logo - hidden by default */
+        #landscape-logo {
+            display: none;
         }
 
         /* Grid Container */
@@ -115,6 +73,7 @@
             max-width: 1400px;
             justify-content: center;
             padding: 0;
+            margin-top: 175px;
         }
 
         #grid-wrapper {
@@ -233,6 +192,69 @@
             left: 0;
             width: 100%;
             will-change: transform;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+
+        /* Anticipation glow for reels when scatters have landed */
+        .reel-column.anticipation {
+            animation: anticipationGlow 0.4s ease-in-out infinite;
+        }
+
+        @keyframes anticipationGlow {
+            0%, 100% {
+                box-shadow: 0 0 15px rgba(255, 215, 0, 0.6), inset 0 0 10px rgba(255, 215, 0, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(255, 215, 0, 1), inset 0 0 20px rgba(255, 215, 0, 0.5);
+            }
+        }
+
+        /* CSS animation for constant-speed spinning - GPU accelerated */
+        /* Moves exactly 3 cell heights, then loops seamlessly */
+        @keyframes reelSpinLoop {
+            from { transform: translate3d(0, 0, 0); }
+            to { transform: translate3d(0, var(--spin-distance), 0); }
+        }
+
+        .reel-strip.spinning {
+            animation: reelSpinLoop var(--spin-duration) linear infinite;
+        }
+
+        /* Motion blur on mobile during spinning - hides simplicity, looks fast */
+        @media (max-width: 768px), (pointer: coarse) {
+            .reel-strip.spinning {
+                filter: blur(2px);
+            }
+            .reel-strip {
+                transition: filter 0.15s ease;
+            }
+        }
+
+        /* CSS transition for stopping - smooth ease-out landing */
+        .reel-strip.stopping {
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), filter 0.15s ease;
+            filter: none !important;
+        }
+
+        /* Bounce animation at end of stop */
+        @keyframes reelBounce {
+            0% { transform: translate3d(0, 0, 0); }
+            40% { transform: translate3d(0, 12px, 0); }
+            70% { transform: translate3d(0, -4px, 0); }
+            100% { transform: translate3d(0, 0, 0); }
+        }
+
+        .reel-strip.bounce {
+            animation: reelBounce 0.2s ease-out forwards;
+        }
+
+        /* Force GPU layer for all symbol cells */
+        .symbol-cell {
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            will-change: auto;
         }
 
         /* Symbol cells - base styles */
@@ -320,99 +342,172 @@
             filter: brightness(1.12) saturate(1.15) drop-shadow(0 0 3px rgba(255, 255, 220, 0.8)) drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.7));
         }
 
-        /* Bottom Controls */
-        #bottom-controls {
+        /* =============================================
+           GAME CONTROLS
+           ============================================= */
+
+        #game-controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            gap: 30px;
-            margin-top: 20px;
-            padding: 15px 40px;
-            background: rgba(10, 14, 26, 0.85);
-            border-radius: 50px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 15px 15px 0 0;
+            padding: 15px 25px 15px 25px;
         }
 
-        .bet-control {
+        .controls-info {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            justify-content: space-between;
+            width: 320px;
+            margin-bottom: 12px;
         }
 
-        .bet-btn {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            border: 3px solid var(--primary-orange);
-            background: linear-gradient(180deg, #1a1a2e 0%, #0a0a1a 100%);
-            color: var(--primary-orange);
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
+        .controls-info > div {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-        }
-
-        .bet-btn:hover {
-            background: var(--primary-orange);
-            color: #fff;
-            transform: scale(1.1);
-        }
-
-        .bet-btn:active {
-            transform: scale(0.95);
-        }
-
-        .bet-display {
-            color: #fff;
-            font-size: 16px;
-            text-align: center;
             min-width: 80px;
         }
 
-        .bet-display .amount {
-            font-size: 24px;
-            color: var(--kitchen-yellow);
-        }
-
-        #spin-btn {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            border: 5px solid var(--primary-orange);
-            background: linear-gradient(180deg, var(--primary-red) 0%, #8b0000 100%);
-            color: #fff;
-            font-size: 20px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 6px 20px rgba(211, 47, 47, 0.5), inset 0 -5px 15px rgba(0,0,0,0.3);
+        .info-label {
+            font-size: 14px;
+            color: #aaa;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.9);
         }
 
-        #spin-btn:hover:not(:disabled) {
-            transform: scale(1.05);
-            box-shadow: 0 8px 30px rgba(211, 47, 47, 0.7), inset 0 -5px 15px rgba(0,0,0,0.3);
+        .info-value {
+            font-size: 32px;
+            color: #fff;
+            font-weight: bold;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.9);
         }
 
-        #spin-btn:active:not(:disabled) {
+        .win-value {
+            color: #ffd700;
+        }
+
+        .controls-buttons {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .buttons-main {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .buttons-sound {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .spin-button {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: #1a1a2e;
+            border: 5px solid #8b0000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 0 25px rgba(139,0,0,0.4);
+            transition: all 0.15s;
+        }
+
+        .spin-button svg {
+            width: 48px;
+            height: 48px;
+        }
+
+        .spin-button:hover {
+            border-color: #cc0000;
+            box-shadow: 0 0 35px rgba(200,0,0,0.5);
+        }
+
+        .spin-button:active {
             transform: scale(0.95);
         }
 
-        #spin-btn:disabled {
-            opacity: 0.6;
+        .spin-button.disabled {
+            opacity: 0.4;
             cursor: not-allowed;
         }
 
-        #spin-btn.spinning {
-            animation: spinBtnPulse 0.5s ease-in-out infinite;
+        .spin-button.spinning {
+            animation: spin-pulse 0.5s ease-in-out infinite;
         }
 
-        @keyframes spinBtnPulse {
-            0%, 100% { box-shadow: 0 6px 20px rgba(211, 47, 47, 0.5); }
-            50% { box-shadow: 0 6px 40px rgba(211, 47, 47, 0.9); }
+        @keyframes spin-pulse {
+            0%, 100% { box-shadow: 0 0 25px rgba(139,0,0,0.4); }
+            50% { box-shadow: 0 0 40px rgba(200,0,0,0.6); }
+        }
+
+        .btn-bet {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            background: rgba(20,20,40,0.85);
+            border: 2px solid rgba(255,255,255,0.4);
+            color: white;
+            font-size: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            user-select: none;
+        }
+
+        .btn-bet:hover {
+            border-color: rgba(255,255,255,0.7);
+            background: rgba(40,40,70,0.85);
+        }
+
+        .btn-bet:active {
+            transform: scale(0.9);
+        }
+
+        .btn-sound {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: rgba(20,20,40,0.7);
+            border: 1px solid rgba(255,255,255,0.25);
+            color: white;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-sound:hover {
+            background: rgba(40,40,70,0.7);
+        }
+
+        .btn-sound.muted {
+            opacity: 0.3;
+        }
+
+        .info-bet {
+            cursor: pointer;
+        }
+
+        .info-bet:active {
+            opacity: 0.7;
         }
 
         /* Free Spins Counter */
@@ -435,9 +530,20 @@
             color: var(--kitchen-yellow);
         }
 
+        #fs-counter #spins-total {
+            font-size: 20px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
         #fs-counter .fs-win {
             margin-top: 5px;
             color: var(--win-green);
+            font-size: 20px;
+        }
+
+        #fs-counter .fs-win span {
+            font-size: 24px;
+            font-weight: bold;
         }
 
         /* Overlay Screens */
@@ -720,6 +826,85 @@
             100% { opacity: 0; transform: translate(-50%, -70%) scale(1); }
         }
 
+        /* Free Spins Win Multiplier Animation */
+        #fs-win-popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 56px;
+            font-weight: bold;
+            color: var(--win-green);
+            text-shadow: 0 0 20px rgba(76, 175, 80, 0.8), 0 4px 8px rgba(0, 0, 0, 0.8);
+            z-index: 500;
+            display: none;
+            text-align: center;
+        }
+
+        #fs-win-popup .base-win {
+            font-size: 42px;
+            opacity: 0.7;
+        }
+
+        #fs-win-popup .multiplied-win {
+            color: #ffeb3b;
+            text-shadow: 0 0 30px rgba(255, 235, 59, 0.9), 0 4px 8px rgba(0, 0, 0, 0.8);
+        }
+
+        #fs-win-popup .x3-flash {
+            display: inline-block;
+            color: #ff5722;
+            font-size: 36px;
+            margin-left: 10px;
+            animation: x3Pulse 0.3s ease-in-out;
+        }
+
+        @keyframes x3Pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.5); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes winMultiply {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            30% { transform: translate(-50%, -50%) scale(1.1); }
+            60% { transform: translate(-50%, -50%) scale(1.3); color: #ffeb3b; }
+            100% { transform: translate(-50%, -50%) scale(1.2); }
+        }
+
+        /* Mode Badge Styles */
+        .fs-mode-badge {
+            display: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            animation: badgePulse 2s ease-in-out infinite;
+        }
+
+        .fs-mode-badge.active {
+            display: inline-block;
+        }
+
+        .fs-mode-badge.x3-badge {
+            background: linear-gradient(180deg, #ff8f00 0%, #e65100 100%);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(255, 143, 0, 0.6);
+        }
+
+        .fs-mode-badge.wilds-badge {
+            background: linear-gradient(180deg, #1565c0 0%, #0d47a1 100%);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(21, 101, 192, 0.6);
+        }
+
+        @keyframes badgePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); box-shadow: 0 6px 20px rgba(255, 143, 0, 0.8); }
+        }
+
         /* Mobile Responsive */
         @media (max-width: 1400px) {
             .symbol-cell {
@@ -752,10 +937,6 @@
         }
 
         @media (max-width: 1100px) {
-            #top-bar {
-                width: 95%;
-            }
-
             #grid-container {
                 width: 96%;
             }
@@ -786,21 +967,6 @@
         }
 
         @media (max-width: 900px) {
-            #top-bar {
-                width: 98%;
-                flex-wrap: wrap;
-                gap: 10px;
-                padding: 8px 15px;
-            }
-
-            .balance-display, .win-display {
-                font-size: 14px;
-            }
-
-            .balance-display span, .win-display span {
-                font-size: 18px;
-            }
-
             #grid-container {
                 width: 98%;
             }
@@ -832,27 +998,6 @@
 
             .wall-divider {
                 width: 18px;
-            }
-
-            #bottom-controls {
-                gap: 10px;
-                padding: 10px 20px;
-            }
-
-            .bet-btn {
-                width: 38px;
-                height: 38px;
-                font-size: 22px;
-            }
-
-            .bet-display .amount {
-                font-size: 20px;
-            }
-
-            #spin-btn {
-                width: 90px;
-                height: 90px;
-                font-size: 16px;
             }
 
             .pick-options {
@@ -900,17 +1045,6 @@
                 width: 12px;
             }
 
-            #spin-btn {
-                width: 70px;
-                height: 70px;
-                font-size: 14px;
-            }
-
-            .mute-btn {
-                width: 32px;
-                height: 32px;
-                font-size: 14px;
-            }
         }
 
         @media (max-width: 550px) {
@@ -947,21 +1081,605 @@
                 width: 8px;
             }
 
-            #bottom-controls {
-                padding: 8px 15px;
-                gap: 8px;
+        }
+
+        /* ===========================================
+           MOBILE RESPONSIVE - DYNAMIC SIZING
+           Uses CSS custom properties set by JavaScript
+           Cell size = min(width-constrained, height-constrained)
+           =========================================== */
+        @media (max-width: 768px) {
+            /* CSS Custom Properties for dynamic sizing - defaults */
+            :root {
+                --cell-size: 60px;
+                --cell-gap: 1px;
+                --divider-width: 5px;
+                --banner-height: 20px;
             }
 
-            #spin-btn {
-                width: 60px;
-                height: 60px;
+            /* Prevent any overflow */
+            html, body {
+                overflow: hidden;
+                max-width: 100vw;
+                position: fixed;
+                width: 100%;
+                height: 100%;
+            }
+
+            /* Full screen vertical layout */
+            #game-container {
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+                align-items: center;
+                padding: 0;
+                gap: 0;
+                width: 100vw;
+                height: 100vh;
+                height: 100dvh;
+                max-width: 100vw;
+                overflow: hidden;
+            }
+
+            /* Mobile Controls - chunky two-row layout */
+            #game-controls {
+                padding-bottom: max(15px, env(safe-area-inset-bottom, 15px));
+            }
+
+            .controls-info {
+                width: 280px;
+                margin-bottom: 10px;
+            }
+
+            .controls-info > div {
+                min-width: 70px;
+            }
+
+            .info-label {
                 font-size: 12px;
             }
 
-            .bet-btn {
-                width: 32px;
-                height: 32px;
+            .info-value {
+                font-size: 26px;
+            }
+
+            .controls-buttons {
+                gap: 10px;
+            }
+
+            .buttons-main {
+                gap: 20px;
+            }
+
+            .spin-button {
+                width: 95px;
+                height: 95px;
+                border-width: 4px;
+            }
+
+            .spin-button svg {
+                width: 42px;
+                height: 42px;
+            }
+
+            .btn-bet {
+                width: 50px;
+                height: 50px;
+                font-size: 28px;
+            }
+
+            .btn-sound {
+                width: 38px;
+                height: 38px;
                 font-size: 18px;
+            }
+
+            .buttons-sound {
+                gap: 12px;
+            }
+
+            /* Grid container - fills available space, centers content */
+            #grid-container {
+                width: 100vw;
+                max-width: none;
+                margin: 0;
+                padding: 0;
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+            }
+
+            #grid-wrapper {
+                display: flex;
+                justify-content: center;
+                align-items: stretch;
+            }
+
+            /* Dynamic cell sizing via CSS custom properties */
+            .symbol-cell {
+                width: var(--cell-size);
+                height: var(--cell-size);
+                border-radius: 3px;
+                border-width: 1px;
+            }
+
+            .reel-column {
+                width: var(--cell-size);
+                height: calc(var(--cell-size) * 3 + var(--cell-gap) * 2);
+                border-radius: 3px;
+            }
+
+            /* Reel sets - no padding, edge to edge */
+            .reel-set {
+                padding: 0;
+                border-radius: 0;
+                background: transparent;
+                box-shadow: none;
+            }
+
+            .reel-set-banner {
+                height: var(--banner-height);
+                max-height: var(--banner-height);
+                margin-bottom: 2px;
+                width: 100%;
+                object-fit: contain;
+            }
+
+            .reel-group {
+                gap: var(--cell-gap);
+            }
+
+            .reel-strip {
+                gap: var(--cell-gap);
+            }
+
+            /* Thin divider */
+            .wall-divider {
+                width: var(--divider-width);
+                min-width: var(--divider-width);
+                flex-shrink: 0;
+            }
+
+            .wall-divider::before {
+                width: 2px;
+            }
+
+            /* Mode indicator - above the grid */
+            #mode-indicator {
+                font-size: 10px;
+                padding: 3px 8px;
+                top: -22px;
+                border-radius: 4px;
+            }
+
+            /* Free spins counter - top right, compact */
+            #fs-counter {
+                position: fixed;
+                top: 8px;
+                right: 8px;
+                padding: 5px 8px;
+                font-size: 10px;
+                border-radius: 5px;
+                z-index: 101;
+            }
+
+            #fs-counter .spins-left {
+                font-size: 14px;
+            }
+
+            #fs-counter #spins-total {
+                font-size: 12px;
+            }
+
+            #fs-counter .fs-win {
+                font-size: 12px;
+            }
+
+            #fs-counter .fs-win span {
+                font-size: 13px;
+            }
+
+            .fs-mode-badge {
+                font-size: 8px;
+                padding: 2px 5px;
+            }
+
+            /* Popups - sized for mobile */
+            #popup-win, #fs-win-popup {
+                font-size: 28px;
+            }
+
+            #fs-win-popup .base-win {
+                font-size: 22px;
+            }
+
+            #fs-win-popup .x3-flash {
+                font-size: 18px;
+            }
+
+            /* Overlay screens - mobile optimized */
+            #fs-trigger-screen .intercom-box {
+                padding: 20px 30px;
+                border-width: 4px;
+                border-radius: 12px;
+            }
+
+            #fs-trigger-screen h2 {
+                font-size: 16px;
+            }
+
+            #fs-trigger-screen .spins-amount {
+                font-size: 42px;
+            }
+
+            #fs-trigger-screen .free-spins-text {
+                font-size: 14px;
+            }
+
+            #fs-pick-screen h2 {
+                font-size: 18px;
+                margin-bottom: 12px;
+            }
+
+            .pick-options {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .pick-option {
+                padding: 10px;
+                border-radius: 8px;
+                width: 80vw;
+                max-width: 280px;
+            }
+
+            .pick-option img {
+                width: 120px;
+                margin-bottom: 6px;
+            }
+
+            .pick-option .pick-label {
+                font-size: 13px;
+            }
+
+            .pick-option .pick-label .bonus-type {
+                font-size: 10px;
+            }
+
+            #fs-end-screen .receipt {
+                padding: 20px 25px;
+                border-radius: 8px;
+                width: 80vw;
+                max-width: 280px;
+                min-width: auto;
+            }
+
+            #fs-end-screen .receipt h3 {
+                font-size: 16px;
+            }
+
+            #fs-end-screen .receipt .total-label {
+                font-size: 13px;
+            }
+
+            #fs-end-screen .receipt .total-amount {
+                font-size: 32px;
+            }
+
+            #fs-end-screen .receipt .thanks {
+                font-size: 11px;
+            }
+
+            #fs-end-screen .continue-btn {
+                padding: 10px 30px;
+                font-size: 13px;
+            }
+
+        }
+
+        /* ===========================================
+           LANDSCAPE MODE - Maximized reels, compact controls
+           =========================================== */
+        @media (max-width: 900px) and (orientation: landscape) {
+            html, body {
+                overflow: hidden;
+                position: fixed;
+                width: 100%;
+                height: 100%;
+            }
+
+            /* Background centered naturally */
+            #bg-video {
+                object-position: center center;
+            }
+
+            /* Landscape logo - top left corner */
+            #landscape-logo {
+                display: block;
+                position: fixed;
+                top: 5px;
+                left: 10px;
+                max-height: 35px;
+                width: auto;
+                opacity: 0.8;
+                z-index: 10;
+            }
+
+            /* Big Win - LARGE and centered in landscape */
+            /* IMPORTANT: Only style when .active is present, otherwise display:none from .overlay base is overridden */
+            #win-celebration.active {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                max-width: 100vw;
+                max-height: 100vh;
+            }
+
+            #win-celebration .win-text-img {
+                max-width: 80vw;
+                height: 45vh;
+                max-height: 45vh;
+                object-fit: contain;
+            }
+
+            #win-celebration .win-amount-display {
+                font-size: 8vw;
+                font-weight: bold;
+                margin-top: 15px;
+                text-shadow: 0 0 30px rgba(76, 175, 80, 0.9), 0 0 60px rgba(76, 175, 80, 0.6), 0 4px 8px rgba(0, 0, 0, 0.7);
+            }
+
+            #win-celebration .win-subtitle {
+                font-size: 4vw;
+                margin-top: 10px;
+            }
+
+            .flying-sprite {
+                width: 50px;
+                height: 50px;
+            }
+
+            #game-container {
+                flex-direction: column;
+                width: 100vw;
+                height: 100vh;
+                height: 100dvh;
+                padding: 0;
+                padding-bottom: 50px;
+                gap: 0;
+            }
+
+            /* Grid container - maximize for reels */
+            #grid-container {
+                position: fixed;
+                top: 5px;
+                left: 0;
+                width: 100vw;
+                height: calc(100vh - 55px);
+                height: calc(100dvh - 55px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+                margin: 0;
+            }
+
+            /* Banners in landscape - small but visible */
+            .reel-set-banner {
+                display: block !important;
+                max-height: 25px !important;
+                height: 25px !important;
+                margin-bottom: 2px !important;
+            }
+
+            /* Landscape Controls - ONE compact row */
+            #game-controls {
+                flex-direction: row;
+                justify-content: center;
+                align-items: center;
+                gap: 20px;
+                padding: 8px 15px;
+                border-radius: 0;
+                height: 50px;
+            }
+
+            /* Info sections inline */
+            .controls-info {
+                flex-direction: row;
+                width: auto;
+                gap: 25px;
+                margin-bottom: 0;
+            }
+
+            .controls-info > div {
+                min-width: auto;
+            }
+
+            .info-label {
+                font-size: 10px;
+            }
+
+            .info-value {
+                font-size: 16px;
+            }
+
+            /* Hide WIN in landscape to save space */
+            .info-win {
+                display: none;
+            }
+
+            /* Buttons all in one row */
+            .controls-buttons {
+                flex-direction: row;
+                gap: 8px;
+            }
+
+            .buttons-main {
+                gap: 8px;
+            }
+
+            .buttons-sound {
+                gap: 6px;
+            }
+
+            .spin-button {
+                width: 55px;
+                height: 55px;
+                border-width: 3px;
+            }
+
+            .spin-button svg {
+                width: 26px;
+                height: 26px;
+            }
+
+            .btn-bet {
+                width: 35px;
+                height: 35px;
+                font-size: 20px;
+            }
+
+            .btn-sound {
+                width: 30px;
+                height: 30px;
+                font-size: 14px;
+            }
+
+            /* Reel sizing for landscape - use CSS vars set by JS */
+            .symbol-cell {
+                width: var(--cell-size);
+                height: var(--cell-size);
+                border-radius: 3px;
+                border-width: 1px;
+            }
+
+            .reel-column {
+                width: var(--cell-size);
+                height: calc(var(--cell-size) * 3 + var(--cell-gap) * 2);
+            }
+
+            .reel-set {
+                padding: 0;
+                background: transparent;
+            }
+
+            .reel-group {
+                gap: var(--cell-gap);
+            }
+
+            .reel-strip {
+                gap: var(--cell-gap);
+            }
+
+            .wall-divider {
+                width: var(--divider-width);
+            }
+
+            /* Mode indicator */
+            #mode-indicator {
+                font-size: 9px;
+                padding: 3px 6px;
+                top: -18px;
+            }
+
+            /* Free spins counter - top left in landscape */
+            #fs-counter {
+                position: fixed;
+                top: 5px;
+                left: 5px;
+                right: auto;
+                padding: 4px 8px;
+                font-size: 9px;
+            }
+
+            #fs-counter .spins-left {
+                font-size: 13px;
+            }
+
+            #fs-counter #spins-total {
+                font-size: 11px;
+            }
+
+            .fs-mode-badge {
+                font-size: 7px;
+                padding: 2px 4px;
+            }
+
+            /* Popups */
+            #popup-win, #fs-win-popup {
+                font-size: 24px;
+            }
+
+            /* Overlay screens - landscape optimized */
+            #fs-trigger-screen .intercom-box {
+                padding: 15px 25px;
+                border-width: 4px;
+                border-radius: 10px;
+            }
+
+            #fs-trigger-screen h2 {
+                font-size: 14px;
+            }
+
+            #fs-trigger-screen .spins-amount {
+                font-size: 36px;
+            }
+
+            #fs-trigger-screen .free-spins-text {
+                font-size: 12px;
+            }
+
+            #fs-pick-screen h2 {
+                font-size: 16px;
+                margin-bottom: 10px;
+            }
+
+            .pick-options {
+                flex-direction: row;
+                gap: 15px;
+            }
+
+            .pick-option {
+                padding: 10px;
+                border-radius: 8px;
+                width: auto;
+                max-width: 200px;
+            }
+
+            .pick-option img {
+                width: 100px;
+                margin-bottom: 5px;
+            }
+
+            .pick-option .pick-label {
+                font-size: 12px;
+            }
+
+            .pick-option .pick-label .bonus-type {
+                font-size: 9px;
+            }
+
+            #fs-end-screen .receipt {
+                padding: 15px 20px;
+                border-radius: 8px;
+                width: auto;
+                min-width: auto;
+            }
+
+            #fs-end-screen .receipt h3 {
+                font-size: 14px;
+            }
+
+            #fs-end-screen .receipt .total-amount {
+                font-size: 28px;
+            }
+
+            #fs-end-screen .continue-btn {
+                padding: 8px 25px;
+                font-size: 12px;
             }
         }
 
@@ -1047,19 +1765,13 @@
         <source src="./assets/bck_small.mp4" type="video/mp4">
     </video>
 
+    <!-- Landscape Logo (hidden by default, shown in landscape mode) -->
+    <img id="landscape-logo" src="./assets/logo.webp" alt="Grease Burger">
+
     <!-- Main Game Container -->
     <div id="game-container">
         <!-- Top UI Bar -->
-        <div id="top-bar">
-            <div class="balance-display">BALANCE: <span id="balance">1000.00</span></div>
-            <div class="win-display">WIN: <span id="last-win">0.00</span></div>
-            <div class="mute-controls">
-                <button class="mute-btn" id="music-mute" title="Toggle Music">&#9835;</button>
-                <button class="mute-btn" id="sfx-mute" title="Toggle SFX">&#128266;</button>
-            </div>
-        </div>
-
-        <!-- Grid Container -->
+        <!-- Grid Container (reels go to top now) -->
         <div id="grid-container">
             <div id="mode-indicator"></div>
             <div id="grid-wrapper">
@@ -1072,21 +1784,46 @@
 
         <!-- Free Spins Counter -->
         <div id="fs-counter">
-            <div>FREE SPINS: <span class="spins-left" id="spins-left">10</span></div>
-            <div class="fs-win">WIN: <span id="fs-win-amount">0.00</span></div>
+            <div>FREE SPINS: <span class="spins-left" id="spins-left">10</span>/<span id="spins-total">10</span></div>
+            <div class="fs-win">TOTAL WIN: $<span id="fs-win-amount">0.00</span></div>
+            <div style="margin-top: 8px;">
+                <span class="fs-mode-badge x3-badge" id="x3-badge">x3 MULTIPLIER</span>
+                <span class="fs-mode-badge wilds-badge" id="wilds-badge">EXTRA WILDS</span>
+            </div>
         </div>
 
-        <!-- Bottom Controls -->
-        <div id="bottom-controls">
-            <div class="bet-control">
-                <button class="bet-btn" id="bet-down">-</button>
-                <div class="bet-display">
-                    <div>BET</div>
-                    <div class="amount" id="bet-amount">1.00</div>
+        <!-- Free Spins Win Popup (for x3 animation) -->
+        <div id="fs-win-popup"></div>
+
+        <!-- Game Controls -->
+        <div id="game-controls">
+            <div class="controls-info">
+                <div class="info-balance">
+                    <span class="info-label">BALANCE</span>
+                    <span class="info-value" id="balance-display">1,000.00</span>
                 </div>
-                <button class="bet-btn" id="bet-up">+</button>
+                <div class="info-win">
+                    <span class="info-label">WIN</span>
+                    <span class="info-value win-value" id="win-display">0.00</span>
+                </div>
+                <div class="info-bet">
+                    <span class="info-label">BET</span>
+                    <span class="info-value" id="bet-display">1.00</span>
+                </div>
             </div>
-            <button id="spin-btn">SPIN</button>
+            <div class="controls-buttons">
+                <div class="buttons-main">
+                    <div class="btn-bet" id="btn-minus">−</div>
+                    <div class="spin-button" id="btn-spin">
+                        <svg viewBox="0 0 24 24" fill="white"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                    </div>
+                    <div class="btn-bet" id="btn-plus">+</div>
+                </div>
+                <div class="buttons-sound">
+                    <div class="btn-sound" id="btn-music">&#9835;</div>
+                    <div class="btn-sound" id="btn-sfx">&#128266;</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1132,11 +1869,12 @@
         <button class="continue-btn" id="fs-continue">CONTINUE</button>
     </div>
 
-    <!-- Win Celebration -->
-    <div class="overlay" id="win-celebration">
+    <!-- Win Celebration - tap anywhere to dismiss -->
+    <div class="overlay" id="win-celebration" style="cursor: pointer;">
         <img class="win-text-img" id="win-text-img" src="" alt="">
         <div class="win-amount-display" id="celebration-amount">$0.00</div>
         <div class="win-subtitle" id="win-subtitle"></div>
+        <div style="position: absolute; bottom: 15%; color: rgba(255,255,255,0.6); font-size: 14px;">TAP TO CONTINUE</div>
     </div>
 
     <script>
@@ -1205,7 +1943,8 @@
                 mode: null // 'order' or 'kitchen'
             },
             musicMuted: false,
-            sfxMuted: false
+            sfxMuted: false,
+            debugForceScatters: false // Debug: force 3 scatters on next spin
         };
 
         // ==================== AUDIO ====================
@@ -1215,8 +1954,7 @@
             sfx_win: null,
             sfx_scatter: null,
             sfx_fs_trigger: null,
-            sfx_button: null,
-            sfx_bigwin: null
+            sfx_button: null
         };
 
         function initAudio() {
@@ -1231,10 +1969,14 @@
             audio.sfx_scatter = new Audio('./assets/sfx_scatter.mp3?v=1');
             audio.sfx_fs_trigger = new Audio('./assets/sfx_fs_trigger.mp3?v=1');
             audio.sfx_button = new Audio('./assets/sfx_button.mp3?v=1');
-            audio.sfx_bigwin = new Audio('./assets/sfx_bigwin.mp3?v=1');
 
-            // Win sound (cash register)
+            // Win sound (cash register) - lowered volume
             audio.sfx_win = new Audio('./assets/modestas123123-cash-register-kaching-sound-effect-125042.mp3?v=1');
+            audio.sfx_win.volume = 0.15;
+
+            // Spin sound
+            audio.sfx_spin = new Audio('./assets/spin.mp3?v=1');
+            audio.sfx_spin.volume = 0.3;
         }
 
         function playSound(soundName) {
@@ -1316,7 +2058,7 @@
                 const updatedSymbolsV3 = ['milkshake'];
                 SYMBOLS.forEach(sym => {
                     if (sym === 'scatter') {
-                        symbolImages.push({ file: 'sym_scatter.webp', version: 1 });
+                        symbolImages.push({ file: 'sym_scatter.png', version: 1 });
                     } else {
                         // Updated symbols use v=2 or v=3
                         const version = updatedSymbolsV3.includes(sym) ? 3 : updatedSymbolsV2.includes(sym) ? 2 : 1;
@@ -1346,8 +2088,10 @@
         }
 
         // ==================== GRID RENDERING ====================
-        // Number of symbols in each reel strip - needs to be tall enough for continuous scrolling
-        const STRIP_LENGTH = 30;
+        // Number of symbols in each reel strip
+        // Minimal: 6 symbols (3 visible + 3 buffer for seamless loop)
+        const isMobile = window.innerWidth <= 768;
+        const STRIP_LENGTH = 6;
 
         function createGrid() {
             const gridWrapper = document.getElementById('grid-wrapper');
@@ -1426,7 +2170,7 @@
         function getSymbolImage(symbol, col) {
             let symbolUrl;
             if (symbol === 'scatter') {
-                symbolUrl = `url('./assets/sym_scatter.webp?v=1')`;
+                symbolUrl = `url('./assets/sym_scatter.png?v=1')`;
             } else {
                 // During free spins, use the selected mode for all columns
                 let variant;
@@ -1478,7 +2222,7 @@
             for (let col = 0; col < CONFIG.REELS; col++) {
                 const strip = document.getElementById(`strip-${col}`);
                 // Position strip so cells 0, 1, 2 are visible
-                strip.style.transform = 'translateY(0)';
+                strip.style.transform = 'translate3d(0, 0, 0)';
 
                 // Set the visible symbols (cells 0, 1, 2)
                 for (let row = 0; row < CONFIG.ROWS; row++) {
@@ -1503,11 +2247,14 @@
         }
 
         // Fill a reel strip with random symbols for spinning
+        // With 6 cells: positions 0-2 visible, positions 3-5 are duplicates for seamless loop
         function fillStripWithRandomSymbols(col) {
-            for (let i = 0; i < STRIP_LENGTH; i++) {
+            // Generate 3 random symbols
+            const symbols = [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()];
+            // Apply to cells 0-2, then duplicate to 3-5
+            for (let i = 0; i < 6; i++) {
                 const cell = document.getElementById(`cell-${col}-${i}`);
-                const symbol = getRandomSymbol();
-                setCellSymbol(cell, symbol, col);
+                setCellSymbol(cell, symbols[i % 3], col);
             }
         }
 
@@ -1516,20 +2263,52 @@
             const cell = document.querySelector('.symbol-cell');
             const styles = getComputedStyle(cell);
             const height = parseFloat(styles.height);
-            const wrapper = document.getElementById('grid-wrapper');
-            const gap = parseFloat(getComputedStyle(wrapper).gap) || 4;
+            // Get gap from reel-strip (where symbols are stacked vertically)
+            const strip = document.querySelector('.reel-strip');
+            const gap = strip ? parseFloat(getComputedStyle(strip).gap) || 4 : 4;
             return { height, gap };
         }
 
         // ==================== MOCK SPIN LOGIC ====================
+        // Win frequency targets:
+        // - No win: ~50-55% of spins
+        // - Small win (1-5x): ~30% of spins
+        // - Big win (15x+): ~4-5% (every 20-25 spins)
+        // - Mega win (30x+): ~1.7-2% (every 50-60 spins)
+        // - Epic win (50x+): ~0.8-1% (every 100-120 spins)
+
         function generateSpinResult() {
             const grid = [];
             const foodSymbols = SYMBOLS.filter(s => s !== 'wild' && s !== 'scatter');
 
-            // Determine if this spin should be a win (~30% chance)
-            const forceWin = Math.random() < 0.3;
+            // High-value symbols for big wins
+            const highSymbols = ['burger', 'nachos', 'milkshake'];
+            // Mid-value symbols
+            const midSymbols = ['taco', 'nuggets'];
+            // Low-value symbols for small wins
+            const lowSymbols = ['onionrings', 'fries', 'hotdog'];
 
-            // Initialize grid with food symbols
+            // Roll for outcome type
+            const roll = Math.random() * 100;
+
+            let outcomeType;
+            if (roll < 52) {
+                outcomeType = 'none';        // 52% no win
+            } else if (roll < 82) {
+                outcomeType = 'small';       // 30% small win (1-5x)
+            } else if (roll < 87) {
+                outcomeType = 'medium';      // 5% medium win (5-14x)
+            } else if (roll < 91.5) {
+                outcomeType = 'big';         // 4.5% big win (15-29x)
+            } else if (roll < 93.5) {
+                outcomeType = 'mega';        // 2% mega win (30-49x)
+            } else if (roll < 94.5) {
+                outcomeType = 'epic';        // 1% epic win (50x+)
+            } else {
+                outcomeType = 'none';        // Remaining goes to no-win
+            }
+
+            // Initialize grid with random food symbols
             for (let col = 0; col < CONFIG.REELS; col++) {
                 grid[col] = [];
                 for (let row = 0; row < CONFIG.ROWS; row++) {
@@ -1537,9 +2316,50 @@
                 }
             }
 
-            // Scatter placement: ~1.5% chance per cell (roughly 1 scatter every 50-80 spins on average)
-            // Each cell has independent chance, so scatters can appear 0, 1, 2, 3+ times
-            const scatterChance = 0.015;
+            // Place win based on outcome type
+            if (outcomeType !== 'none') {
+                const paylineIndex = Math.floor(Math.random() * PAYLINES.length);
+                const payline = PAYLINES[paylineIndex];
+
+                let winSymbol, winLength;
+
+                if (outcomeType === 'small') {
+                    // 3-of-kind with any symbol = 1-5x
+                    winSymbol = foodSymbols[Math.floor(Math.random() * foodSymbols.length)];
+                    winLength = 3;
+                } else if (outcomeType === 'medium') {
+                    // 4-of-kind with low/mid symbols = 3-8x, or 3-of-kind high = 3-5x
+                    winSymbol = [...lowSymbols, ...midSymbols][Math.floor(Math.random() * 5)];
+                    winLength = 4;
+                } else if (outcomeType === 'big') {
+                    // 4-of-kind with high symbol (15x) or 5-of-kind with mid (15-20x)
+                    if (Math.random() < 0.5) {
+                        winSymbol = highSymbols[Math.floor(Math.random() * highSymbols.length)];
+                        winLength = 4;
+                    } else {
+                        winSymbol = midSymbols[Math.floor(Math.random() * midSymbols.length)];
+                        winLength = 5;
+                    }
+                } else if (outcomeType === 'mega') {
+                    // 5-of-kind with high symbol (30-50x)
+                    winSymbol = highSymbols[Math.floor(Math.random() * highSymbols.length)];
+                    winLength = 5;
+                } else if (outcomeType === 'epic') {
+                    // 6-of-kind with high symbol (100-150x) or 5-of-kind burger (50x)
+                    winSymbol = highSymbols[Math.floor(Math.random() * 2)]; // burger or nachos
+                    winLength = Math.random() < 0.3 ? 6 : 5; // 30% chance of 6-of-kind
+                    if (winLength === 5) winSymbol = 'burger'; // burger 5-of-kind = 50x
+                }
+
+                // Place winning symbols on the payline
+                for (let col = 0; col < winLength && col < CONFIG.REELS; col++) {
+                    const row = payline[col];
+                    grid[col][row] = winSymbol;
+                }
+            }
+
+            // Scatter placement: ~1% chance per cell (roughly every 50-60 spins for 3+ scatters)
+            const scatterChance = 0.01;
             for (let col = 0; col < CONFIG.REELS; col++) {
                 for (let row = 0; row < CONFIG.ROWS; row++) {
                     if (Math.random() < scatterChance) {
@@ -1548,7 +2368,7 @@
                 }
             }
 
-            // Count scatters currently in grid
+            // Count scatters
             let gridScatterCount = 0;
             for (let col = 0; col < CONFIG.REELS; col++) {
                 for (let row = 0; row < CONFIG.ROWS; row++) {
@@ -1556,22 +2376,9 @@
                 }
             }
 
-            // Force a winning combination if needed (but not if we have 3+ scatters triggering free spins)
-            if (forceWin && gridScatterCount < 3) {
-                const winSymbol = foodSymbols[Math.floor(Math.random() * foodSymbols.length)];
-                const paylineIndex = Math.floor(Math.random() * PAYLINES.length);
-                const payline = PAYLINES[paylineIndex];
-                const winLength = 3 + Math.floor(Math.random() * 3); // 3-5 symbols
-
-                for (let col = 0; col < winLength && col < CONFIG.REELS; col++) {
-                    const row = payline[col];
-                    grid[col][row] = winSymbol;
-                }
-            }
-
-            // Add wilds on reels 2-5 (indices 1-4)
-            // ~15% chance per cell = roughly 1-2 wilds every 5-8 spins
-            const wildChance = (gameState.freeSpins.active && gameState.freeSpins.mode === 'order') ? 0.25 : 0.15;
+            // Add wilds on reels 2-5 (indices 1-4) - reduced chance for balance
+            // ~8% chance per cell in base game, 20% in free spins order mode
+            const wildChance = (gameState.freeSpins.active && gameState.freeSpins.mode === 'order') ? 0.20 : 0.08;
             for (let col = 1; col < 5; col++) {
                 for (let row = 0; row < CONFIG.ROWS; row++) {
                     if (grid[col][row] !== 'scatter' && Math.random() < wildChance) {
@@ -1580,8 +2387,24 @@
                 }
             }
 
+            // Debug: force 3 scatters for free spins trigger
+            if (gameState.debugForceScatters) {
+                gameState.debugForceScatters = false;
+                const scatterPositions = [];
+                while (scatterPositions.length < 3) {
+                    const col = Math.floor(Math.random() * CONFIG.REELS);
+                    const row = Math.floor(Math.random() * CONFIG.ROWS);
+                    const key = `${col},${row}`;
+                    if (!scatterPositions.some(p => p.key === key)) {
+                        scatterPositions.push({ col, row, key });
+                        grid[col][row] = 'scatter';
+                    }
+                }
+                console.log('DEBUG: Forced 3 scatters:', scatterPositions.map(p => `[${p.col},${p.row}]`).join(', '));
+            }
+
             if (CONFIG.DEBUG) {
-                console.log('Generated grid:', grid);
+                console.log('Generated grid:', grid, 'Outcome:', outcomeType);
             }
 
             return grid;
@@ -1679,157 +2502,137 @@
 
         // ==================== ANIMATIONS ====================
 
-        // Spin state for each reel
-        const reelState = [];
-
         async function animateSpin() {
-            const spinBtn = document.getElementById('spin-btn');
+            const spinBtn = document.getElementById('btn-spin');
             spinBtn.classList.add('spinning');
 
             // Generate final result first
             gameState.grid = generateSpinResult();
 
+            // Get cell dimensions once at start
             const { height, gap } = getCellDimensions();
-            const cellStep = height + gap; // Distance for one symbol
+            const cellStep = height + gap;
 
-            // Spin parameters
-            const FULL_SPEED = 35; // Pixels per frame at full speed
-            const FULL_SPIN_TIME = 500; // ms at full speed before first reel starts stopping
-            const STOP_STAGGER = 250; // ms between each reel starting to decelerate
+            // Timing parameters
+            const SPIN_TIME = 500; // ms before first reel stops
+            const STOP_STAGGER = 200; // ms between each reel stopping
 
-            // Initialize each reel
+            // Count scatters for anticipation
+            const scatterCols = [];
+            for (let col = 0; col < CONFIG.REELS; col++) {
+                for (let row = 0; row < CONFIG.ROWS; row++) {
+                    if (gameState.grid[col][row] === 'scatter') {
+                        scatterCols.push(col);
+                        break;
+                    }
+                }
+            }
+
+            // Initialize all reels - fill with random symbols and start CSS animation
             for (let col = 0; col < CONFIG.REELS; col++) {
                 const strip = document.getElementById(`strip-${col}`);
 
-                // Fill entire strip with random symbols
+                // Fill strip with random symbols (cells 3-5 duplicate 0-2 for seamless loop)
                 fillStripWithRandomSymbols(col);
 
-                // Start position: deep in the strip (large negative translateY)
-                // This shows high-indexed cells, and as we increase translateY toward 0,
-                // lower-indexed cells come into view (symbols scroll DOWN)
-                const startPosition = -(STRIP_LENGTH - 5) * cellStep;
+                // Set CSS variable for animation distance (negative = scroll down)
+                strip.style.setProperty('--spin-distance', `${-3 * cellStep}px`);
+                strip.style.setProperty('--spin-duration', '150ms');
 
-                reelState[col] = {
-                    strip: strip,
-                    position: startPosition, // Current translateY value
-                    phase: 'spinning', // spinning, decelerating, bouncing, stopped
-                    targetPosition: 0, // Where we need to land (translateY = 0 shows cells 0,1,2)
-                    velocity: FULL_SPEED,
-                    decelerateStartTime: null,
-                    bounceStartTime: null,
-                    bounceStartPos: null
-                };
+                // Clear any previous classes and start fresh
+                strip.classList.remove('stopping', 'bounce');
+                strip.style.transform = '';
 
-                strip.style.transform = `translateY(${startPosition}px)`;
+                // Start spinning - pure CSS animation, ZERO JavaScript
+                strip.classList.add('spinning');
             }
 
-            // Calculate when each reel starts decelerating
-            const decelerateTimes = [];
+            // Stop each reel with staggered timing
+            let scattersLanded = 0;
+
+            const stopReel = (col) => {
+                return new Promise(resolve => {
+                    const strip = document.getElementById(`strip-${col}`);
+                    const reelColumn = document.getElementById(`reel-${col}`);
+
+                    // Check for scatter anticipation
+                    if (scatterCols.includes(col)) {
+                        scattersLanded++;
+                        if (scattersLanded >= 2) {
+                            // Slow down remaining reels for anticipation
+                            for (let c = col + 1; c < CONFIG.REELS; c++) {
+                                const futureStrip = document.getElementById(`strip-${c}`);
+                                futureStrip.style.setProperty('--spin-duration', '300ms');
+                                document.getElementById(`reel-${c}`).classList.add('anticipation');
+                            }
+                        }
+                    }
+
+                    // Place final symbols at positions 0-2
+                    for (let row = 0; row < CONFIG.ROWS; row++) {
+                        const cell = document.getElementById(`cell-${col}-${row}`);
+                        setCellSymbol(cell, gameState.grid[col][row], col);
+                    }
+                    // Duplicate to positions 3-5 for visual consistency
+                    for (let row = 0; row < CONFIG.ROWS; row++) {
+                        const cell = document.getElementById(`cell-${col}-${row + 3}`);
+                        setCellSymbol(cell, gameState.grid[col][row], col);
+                    }
+
+                    // Stop CSS animation
+                    strip.classList.remove('spinning');
+
+                    // Start from a point above and transition down to 0
+                    strip.style.transform = `translate3d(0, ${-2 * cellStep}px, 0)`;
+
+                    // Force reflow to ensure transform is applied before transition
+                    strip.offsetHeight;
+
+                    // Add transition class and animate to final position
+                    strip.classList.add('stopping');
+                    strip.style.transform = 'translate3d(0, 0, 0)';
+
+                    // After transition completes, add bounce
+                    setTimeout(() => {
+                        strip.classList.remove('stopping');
+                        strip.classList.add('bounce');
+                        reelColumn.classList.remove('anticipation');
+
+                        // Play scatter sound if this reel has one
+                        for (let row = 0; row < CONFIG.ROWS; row++) {
+                            if (gameState.grid[col][row] === 'scatter') {
+                                playSound('sfx_scatter');
+                            }
+                        }
+
+                        // Bounce animation completes
+                        setTimeout(() => {
+                            strip.classList.remove('bounce');
+                            resolve();
+                        }, 200);
+                    }, 300);
+                });
+            };
+
+            // Wait for spin time, then stop reels one by one
+            await new Promise(resolve => setTimeout(resolve, SPIN_TIME));
+
+            // Stop all reels with stagger
+            const stopPromises = [];
             for (let col = 0; col < CONFIG.REELS; col++) {
-                decelerateTimes[col] = FULL_SPIN_TIME + (col * STOP_STAGGER);
+                stopPromises.push(
+                    new Promise(resolve => {
+                        setTimeout(async () => {
+                            await stopReel(col);
+                            resolve();
+                        }, col * STOP_STAGGER);
+                    })
+                );
             }
 
-            const startTime = performance.now();
+            await Promise.all(stopPromises);
 
-            return new Promise(resolve => {
-                function animate(currentTime) {
-                    const elapsed = currentTime - startTime;
-                    let allStopped = true;
-
-                    for (let col = 0; col < CONFIG.REELS; col++) {
-                        const state = reelState[col];
-
-                        if (state.phase === 'stopped') continue;
-                        allStopped = false;
-
-                        // === SPINNING PHASE ===
-                        if (state.phase === 'spinning') {
-                            // Check if it's time to start decelerating
-                            if (elapsed >= decelerateTimes[col]) {
-                                state.phase = 'decelerating';
-                                state.decelerateStartTime = currentTime;
-
-                                // Place final symbols in cells 0, 1, 2 so they're ready when we land
-                                for (let row = 0; row < CONFIG.ROWS; row++) {
-                                    const cell = document.getElementById(`cell-${col}-${row}`);
-                                    setCellSymbol(cell, gameState.grid[col][row], col);
-                                }
-                            } else {
-                                // Full speed scrolling - move toward 0 (symbols scroll down)
-                                state.position += state.velocity;
-
-                                // Seamless loop: when we get close to 0, reset back and refill
-                                if (state.position >= -3 * cellStep) {
-                                    state.position = -(STRIP_LENGTH - 5) * cellStep;
-                                    fillStripWithRandomSymbols(col);
-                                }
-                            }
-                        }
-
-                        // === DECELERATING PHASE ===
-                        if (state.phase === 'decelerating') {
-                            const distanceToTarget = state.targetPosition - state.position;
-
-                            if (distanceToTarget <= 0.5) {
-                                // Close enough - start bounce
-                                state.phase = 'bouncing';
-                                state.bounceStartTime = currentTime;
-                                state.bounceStartPos = state.position;
-                            } else {
-                                // Ease out - move a fraction of remaining distance
-                                // This creates natural deceleration
-                                const easeFactor = 0.12;
-                                const speed = Math.max(distanceToTarget * easeFactor, 2);
-                                state.position += speed;
-
-                                // Clamp to not overshoot
-                                if (state.position > state.targetPosition) {
-                                    state.position = state.targetPosition;
-                                }
-                            }
-                        }
-
-                        // === BOUNCING PHASE ===
-                        if (state.phase === 'bouncing') {
-                            const bounceElapsed = currentTime - state.bounceStartTime;
-                            const bounceDuration = 150;
-                            const overshoot = 18; // pixels to overshoot past target
-
-                            if (bounceElapsed >= bounceDuration) {
-                                // Bounce complete
-                                state.phase = 'stopped';
-                                state.position = state.targetPosition;
-
-                                // Play scatter sound
-                                for (let row = 0; row < CONFIG.ROWS; row++) {
-                                    if (gameState.grid[col][row] === 'scatter') {
-                                        playSound('sfx_scatter');
-                                    }
-                                }
-                            } else {
-                                // Bounce curve: overshoot then settle
-                                // t goes from 0 to 1 over duration
-                                const t = bounceElapsed / bounceDuration;
-                                // Damped sine wave for bounce: overshoot, come back, settle
-                                const bounce = Math.sin(t * Math.PI) * overshoot * (1 - t * 0.5);
-                                state.position = state.targetPosition + bounce;
-                            }
-                        }
-
-                        // Apply position
-                        state.strip.style.transform = `translateY(${state.position}px)`;
-                    }
-
-                    if (allStopped) {
-                        spinBtn.classList.remove('spinning');
-                        resolve();
-                    } else {
-                        requestAnimationFrame(animate);
-                    }
-                }
-
-                requestAnimationFrame(animate);
-            });
+            spinBtn.classList.remove('spinning');
         }
 
         function highlightWinningCells(positions) {
@@ -1881,12 +2684,22 @@
 
             if (!winType) return;
 
-            playSound('sfx_bigwin');
+            // Play spin sound for big win celebration
+            if (!gameState.sfxMuted && audio.sfx_spin) {
+                const originalVolume = audio.sfx_spin.volume;
+                audio.sfx_spin.volume = 0.3;
+                audio.sfx_spin.currentTime = 0;
+                audio.sfx_spin.play().catch(() => {});
+                // Restore volume after sound plays
+                setTimeout(() => { audio.sfx_spin.volume = originalVolume; }, 1000);
+            }
 
             const celebration = document.getElementById('win-celebration');
             const textImg = document.getElementById('win-text-img');
             const amountDisplay = document.getElementById('celebration-amount');
             const subtitleDisplay = document.getElementById('win-subtitle');
+            const container = document.getElementById('game-container');
+            const landscapeLogo = document.getElementById('landscape-logo');
 
             textImg.src = textImage;
             amountDisplay.textContent = `$${totalWin.toFixed(2)}`;
@@ -1894,8 +2707,10 @@
 
             celebration.classList.add('active');
 
+            // Hide landscape logo during celebration
+            if (landscapeLogo) landscapeLogo.style.display = 'none';
+
             // Screen shake
-            const container = document.getElementById('game-container');
             if (winType === 'epic') {
                 container.classList.add('screen-shake-heavy');
             } else {
@@ -1912,10 +2727,47 @@
                 }, i * 100);
             }
 
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            // SIMPLE DISMISS LOGIC - works in portrait AND landscape
+            await new Promise(resolve => {
+                let isDismissed = false;
+                let autoTimeout = null;
 
-            container.classList.remove('screen-shake', 'screen-shake-heavy');
-            celebration.classList.remove('active');
+                const dismissWin = () => {
+                    if (isDismissed) return;
+                    isDismissed = true;
+
+                    // Clear auto-dismiss timeout
+                    if (autoTimeout) clearTimeout(autoTimeout);
+
+                    // Remove ALL event listeners
+                    document.removeEventListener('click', dismissWin, true);
+                    document.removeEventListener('touchstart', dismissWin, true);
+
+                    // Clean up UI
+                    container.classList.remove('screen-shake', 'screen-shake-heavy');
+                    celebration.classList.remove('active');
+
+                    // Restore landscape logo
+                    if (landscapeLogo) landscapeLogo.style.display = '';
+
+                    // Reset game state to idle
+                    gameState.spinning = false;
+
+                    resolve();
+                };
+
+                // Use capturing phase to ensure we get the event
+                // Small delay before adding listener to prevent immediate dismiss
+                setTimeout(() => {
+                    if (!isDismissed) {
+                        document.addEventListener('click', dismissWin, true);
+                        document.addEventListener('touchstart', dismissWin, true);
+                    }
+                }, 300);
+
+                // Auto-dismiss after 4 seconds as backup
+                autoTimeout = setTimeout(dismissWin, 4000);
+            });
         }
 
         function createFlyingSprite(spriteFile) {
@@ -1952,6 +2804,10 @@
 
             playSound('sfx_fs_trigger');
 
+            // Hide landscape logo during overlays
+            const landscapeLogo = document.getElementById('landscape-logo');
+            if (landscapeLogo) landscapeLogo.style.display = 'none';
+
             // Show trigger screen
             const triggerScreen = document.getElementById('fs-trigger-screen');
             document.getElementById('trigger-spins-amount').textContent = spins;
@@ -1981,6 +2837,7 @@
             gameState.freeSpins = {
                 active: true,
                 remaining: spins,
+                total: spins,
                 totalWin: 0,
                 mode: choice
             };
@@ -1991,8 +2848,13 @@
             modeIndicator.className = choice === 'order' ? 'order-mode' : 'kitchen-mode';
             modeIndicator.style.display = 'block';
 
+            // Show appropriate mode badge
+            document.getElementById('x3-badge').classList.toggle('active', choice === 'kitchen');
+            document.getElementById('wilds-badge').classList.toggle('active', choice === 'order');
+
             // Show counter
             document.getElementById('fs-counter').style.display = 'block';
+            document.getElementById('spins-total').textContent = spins;
             updateFreeSpinsUI();
 
             // Switch music
@@ -2006,6 +2868,7 @@
             while (gameState.freeSpins.remaining > 0) {
                 gameState.freeSpins.remaining--;
                 updateFreeSpinsUI();
+                playSound('sfx_spin');
 
                 await animateSpin();
                 const results = evaluateWins();
@@ -2022,15 +2885,24 @@
 
                     playSound('sfx_win');
 
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    // Show win popup with x3 animation for kitchen mode
+                    if (gameState.freeSpins.mode === 'kitchen') {
+                        await showMultipliedWin(results.totalWin);
+                    } else {
+                        showFreeSpinWin(results.totalWin);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+
                     clearWinningHighlights();
                 }
 
                 // Check for retrigger
                 if (results.scatterWin && results.scatterWin.count >= 3) {
                     gameState.freeSpins.remaining += 5;
+                    gameState.freeSpins.total += 5;
+                    document.getElementById('spins-total').textContent = gameState.freeSpins.total;
                     // Show brief retrigger message
-                    showPopupWin(5); // Reusing popup for "+5 SPINS"
+                    showRetriggerPopup();
                 }
 
                 await new Promise(resolve => setTimeout(resolve, 500));
@@ -2040,15 +2912,59 @@
             await endFreeSpins();
         }
 
+        function showFreeSpinWin(amount) {
+            const popup = document.getElementById('fs-win-popup');
+            popup.innerHTML = `+$${amount.toFixed(2)}`;
+            popup.style.display = 'block';
+            setTimeout(() => { popup.style.display = 'none'; }, 1000);
+        }
+
+        async function showMultipliedWin(finalAmount) {
+            const popup = document.getElementById('fs-win-popup');
+            const badge = document.getElementById('x3-badge');
+            const baseAmount = finalAmount / 3;
+
+            // Show base amount first
+            popup.innerHTML = `<div class="base-win">+$${baseAmount.toFixed(2)}</div>`;
+            popup.style.display = 'block';
+
+            await new Promise(resolve => setTimeout(resolve, 400));
+
+            // Flash and show multiplied amount with x3 indicator in popup
+            popup.innerHTML = `<div class="multiplied-win">+$${finalAmount.toFixed(2)}<span class="x3-flash">x3</span></div>`;
+
+            // Pulse the badge briefly during the animation
+            badge.style.animation = 'none';
+            badge.offsetHeight; // Trigger reflow
+            badge.style.animation = 'x3Pulse 0.3s ease-in-out 3';
+
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            // Reset badge animation after the popup effect
+            badge.style.animation = '';
+
+            await new Promise(resolve => setTimeout(resolve, 200));
+            popup.style.display = 'none';
+        }
+
+        function showRetriggerPopup() {
+            const popup = document.getElementById('fs-win-popup');
+            popup.innerHTML = `<div style="color: #ffeb3b;">+5 FREE SPINS!</div>`;
+            popup.style.display = 'block';
+            setTimeout(() => { popup.style.display = 'none'; }, 1500);
+        }
+
         function updateFreeSpinsUI() {
             document.getElementById('spins-left').textContent = gameState.freeSpins.remaining;
             document.getElementById('fs-win-amount').textContent = gameState.freeSpins.totalWin.toFixed(2);
         }
 
         async function endFreeSpins() {
-            // Hide counter and mode indicator
+            // Hide counter, mode indicator, and badges
             document.getElementById('fs-counter').style.display = 'none';
             document.getElementById('mode-indicator').style.display = 'none';
+            document.getElementById('x3-badge').classList.remove('active');
+            document.getElementById('wilds-badge').classList.remove('active');
 
             // Show end screen
             const endScreen = document.getElementById('fs-end-screen');
@@ -2067,6 +2983,10 @@
             });
 
             endScreen.classList.remove('active');
+
+            // Restore landscape logo
+            const landscapeLogo = document.getElementById('landscape-logo');
+            if (landscapeLogo) landscapeLogo.style.display = '';
 
             // Reset free spins state
             gameState.freeSpins = {
@@ -2095,7 +3015,9 @@
             gameState.isSpinning = true;
             gameState.balance -= bet;
             updateUI();
-            document.getElementById('spin-btn').disabled = true;
+            document.getElementById('btn-spin').classList.add('disabled');
+            document.getElementById('win-display').textContent = '0.00';
+            playSound('sfx_spin');
 
             clearWinningHighlights();
 
@@ -2111,7 +3033,7 @@
                 highlightWinningCells(allPositions);
 
                 gameState.balance += results.totalWin;
-                document.getElementById('last-win').textContent = results.totalWin.toFixed(2);
+                document.getElementById('win-display').textContent = results.totalWin.toFixed(2);
                 updateUI();
 
                 playSound('sfx_win');
@@ -2122,8 +3044,6 @@
 
                 await new Promise(resolve => setTimeout(resolve, CONFIG.WIN_DISPLAY_TIME));
                 clearWinningHighlights();
-            } else {
-                document.getElementById('last-win').textContent = '0.00';
             }
 
             // Check for free spins trigger
@@ -2132,22 +3052,23 @@
             }
 
             gameState.isSpinning = false;
-            document.getElementById('spin-btn').disabled = false;
+            document.getElementById('btn-spin').classList.remove('disabled');
         }
 
         // ==================== UI UPDATES ====================
         function updateUI() {
-            document.getElementById('balance').textContent = gameState.balance.toFixed(2);
-            document.getElementById('bet-amount').textContent = CONFIG.BET_LEVELS[gameState.betIndex].toFixed(2);
+            document.getElementById('balance-display').textContent = gameState.balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('bet-display').textContent = CONFIG.BET_LEVELS[gameState.betIndex].toFixed(2);
         }
 
         // ==================== EVENT HANDLERS ====================
         function setupEventListeners() {
             // Spin button
-            document.getElementById('spin-btn').addEventListener('click', spin);
+            document.getElementById('btn-spin').addEventListener('click', spin);
 
-            // Bet controls
-            document.getElementById('bet-up').addEventListener('click', () => {
+            // Bet plus button
+            document.getElementById('btn-plus').addEventListener('click', () => {
+                if (gameState.isSpinning) return;
                 playSound('sfx_button');
                 if (gameState.betIndex < CONFIG.BET_LEVELS.length - 1) {
                     gameState.betIndex++;
@@ -2155,7 +3076,9 @@
                 }
             });
 
-            document.getElementById('bet-down').addEventListener('click', () => {
+            // Bet minus button
+            document.getElementById('btn-minus').addEventListener('click', () => {
+                if (gameState.isSpinning) return;
                 playSound('sfx_button');
                 if (gameState.betIndex > 0) {
                     gameState.betIndex--;
@@ -2163,10 +3086,18 @@
                 }
             });
 
-            // Mute controls
-            document.getElementById('music-mute').addEventListener('click', () => {
+            // Tap bet display to cycle through bet amounts (mobile)
+            document.querySelector('.info-bet').addEventListener('click', () => {
+                if (gameState.isSpinning) return;
+                playSound('sfx_button');
+                gameState.betIndex = (gameState.betIndex + 1) % CONFIG.BET_LEVELS.length;
+                updateUI();
+            });
+
+            // Music mute button
+            document.getElementById('btn-music').addEventListener('click', () => {
                 gameState.musicMuted = !gameState.musicMuted;
-                const btn = document.getElementById('music-mute');
+                const btn = document.getElementById('btn-music');
                 btn.classList.toggle('muted', gameState.musicMuted);
 
                 if (gameState.musicMuted) {
@@ -2176,9 +3107,10 @@
                 }
             });
 
-            document.getElementById('sfx-mute').addEventListener('click', () => {
+            // SFX mute button
+            document.getElementById('btn-sfx').addEventListener('click', () => {
                 gameState.sfxMuted = !gameState.sfxMuted;
-                const btn = document.getElementById('sfx-mute');
+                const btn = document.getElementById('btn-sfx');
                 btn.classList.toggle('muted', gameState.sfxMuted);
             });
 
@@ -2187,6 +3119,11 @@
                 if (e.code === 'Space' && !gameState.isSpinning && !gameState.freeSpins.active) {
                     e.preventDefault();
                     spin();
+                }
+                // Debug: F key forces 3 scatters on next spin
+                if (CONFIG.DEBUG && e.code === 'KeyF' && !gameState.isSpinning) {
+                    gameState.debugForceScatters = true;
+                    console.log('DEBUG: Free spins will trigger on next spin');
                 }
             });
 
@@ -2198,11 +3135,94 @@
             }, { once: true });
         }
 
+        // ==================== MOBILE DYNAMIC SIZING ====================
+        function calculateMobileLayout() {
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const isLandscape = viewportWidth > viewportHeight;
+            const isMobileSize = viewportWidth <= 900;
+
+            // Only apply on mobile-sized screens
+            if (!isMobileSize && !isLandscape) return;
+            if (viewportWidth > 900 && !isLandscape) return;
+
+            const root = document.documentElement;
+
+            // Fixed dimensions (must match CSS)
+            const DIVIDER_WIDTH = 5;
+            const CELL_GAP = 1;
+            const VERTICAL_PADDING = 4;
+
+            let availableWidth, availableHeight, bannerHeight;
+
+            if (isLandscape && viewportWidth <= 900) {
+                // LANDSCAPE MODE: single row controls, small banners, maximize reels
+                const CONTROLS_SPACE = 55; // Compact 50px bar + padding
+                const TOP_PADDING = 5;
+                bannerHeight = 25; // Small banners in landscape
+
+                availableWidth = viewportWidth;
+                availableHeight = viewportHeight - CONTROLS_SPACE - TOP_PADDING - (bannerHeight + 2);
+            } else if (viewportWidth <= 768) {
+                // PORTRAIT MODE: two-row chunky controls
+                const CONTROLS_SPACE = 220;
+                bannerHeight = 20;
+
+                availableWidth = viewportWidth;
+                availableHeight = viewportHeight - CONTROLS_SPACE - (bannerHeight + 2);
+            } else {
+                // Not mobile, don't apply
+                return;
+            }
+
+            // Calculate cell size from WIDTH constraint:
+            // availableWidth = 6 cells + 4 gaps + 1 divider
+            const cellSizeFromWidth = (availableWidth - 4 * CELL_GAP - DIVIDER_WIDTH) / 6;
+
+            // Calculate cell size from HEIGHT constraint:
+            // availableHeight = 3 cells + 2 gaps
+            const cellSizeFromHeight = (availableHeight - 2 * CELL_GAP) / 3;
+
+            // Use the SMALLER of the two to ensure it fits both ways
+            const cellSize = Math.floor(Math.min(cellSizeFromWidth, cellSizeFromHeight));
+
+            // Set CSS custom properties
+            root.style.setProperty('--cell-size', `${cellSize}px`);
+            root.style.setProperty('--cell-gap', `${CELL_GAP}px`);
+            root.style.setProperty('--divider-width', `${DIVIDER_WIDTH}px`);
+            root.style.setProperty('--banner-height', `${bannerHeight}px`);
+
+            if (typeof CONFIG !== 'undefined' && CONFIG.DEBUG) {
+                console.log('Mobile layout:', {
+                    mode: isLandscape ? 'landscape' : 'portrait',
+                    viewport: `${viewportWidth}x${viewportHeight}`,
+                    available: `${availableWidth}x${availableHeight}`,
+                    cellSize,
+                    constraint: cellSizeFromWidth < cellSizeFromHeight ? 'width' : 'height'
+                });
+            }
+        }
+
+        // Recalculate on resize (rotation, keyboard, etc)
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(calculateMobileLayout, 100);
+        });
+
+        // Also handle orientation change explicitly
+        window.addEventListener('orientationchange', () => {
+            setTimeout(calculateMobileLayout, 200);
+        });
+
         // ==================== INITIALIZATION ====================
         async function init() {
             if (CONFIG.DEBUG) {
                 console.log('Debug mode enabled');
             }
+
+            // Calculate mobile layout before creating grid
+            calculateMobileLayout();
 
             initAudio();
             await preloadImages();
