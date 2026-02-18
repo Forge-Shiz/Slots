@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Grease Burger: The Quest For Munchies</title>
+    <link rel="icon" type="image/x-icon" href="./favicon.ico">
+    <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
     <style>
         * {
             margin: 0;
@@ -56,6 +58,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            object-position: center top;
             z-index: 0;
             pointer-events: none;
         }
@@ -73,7 +76,7 @@
             max-width: 1400px;
             justify-content: center;
             padding: 0;
-            margin-top: 175px;
+            margin-top: 265px;
         }
 
         #grid-wrapper {
@@ -180,6 +183,7 @@
             overflow: hidden;
             position: relative;
             border-radius: 12px;
+            contain: strict;
         }
 
         /* The scrolling strip inside each reel */
@@ -232,6 +236,15 @@
             }
         }
 
+        /* Mobile background video positioning - center the Grease Burger sign */
+        @media (max-width: 768px) {
+            #bg-video {
+                width: 130%;
+                left: -15%;
+                object-position: 38% center;
+            }
+        }
+
         /* CSS transition for stopping - smooth ease-out landing */
         .reel-strip.stopping {
             transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), filter 0.15s ease;
@@ -268,6 +281,24 @@
             position: relative;
             z-index: 1;
             filter: brightness(1.12) saturate(1.15) drop-shadow(0 0 3px rgba(255, 255, 220, 0.8)) drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.7));
+        }
+
+        /* Pre-created symbol layers for opacity toggling (prevents blank frames) */
+        .symbol-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: 82%, 100%, 100%;
+            background-position: center, center, center;
+            background-repeat: no-repeat, no-repeat, no-repeat;
+            opacity: 0;
+            pointer-events: none;
+            border-radius: inherit;
+        }
+        .symbol-layer.active {
+            opacity: 1;
         }
 
         /* Order side (columns 0-2) - stoner tray background with dark overlay */
@@ -342,6 +373,41 @@
             filter: brightness(1.12) saturate(1.15) drop-shadow(0 0 3px rgba(255, 255, 220, 0.8)) drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.7));
         }
 
+        /* ===========================================
+           MOBILE PERFORMANCE OPTIMIZATIONS
+           =========================================== */
+
+        /* Force GPU compositing on key elements - desktop */
+        #game-container,
+        .reel-column {
+            transform: translateZ(0);
+        }
+
+        /* Desktop only: GPU layer for symbol cells */
+        .symbol-cell {
+            transform: translateZ(0);
+        }
+
+        /* Mobile-only optimizations */
+        @media (max-width: 768px), (pointer: coarse) {
+            /* Remove translateZ from symbol cells on mobile - too many layers */
+            .symbol-cell {
+                transform: none;
+            }
+
+            /* Remove will-change from everything except reel-strip */
+            .symbol-cell,
+            #game-container {
+                will-change: auto;
+            }
+
+            /* Disable screen shake - causes full page repaints */
+            .screen-shake,
+            .screen-shake-heavy {
+                animation: none !important;
+            }
+        }
+
         /* =============================================
            GAME CONTROLS
            ============================================= */
@@ -362,16 +428,18 @@
 
         .controls-info {
             display: flex;
-            justify-content: space-between;
-            width: 320px;
+            justify-content: center;
+            width: 100%;
+            max-width: 360px;
             margin-bottom: 12px;
         }
 
         .controls-info > div {
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-width: 80px;
+            text-align: center;
         }
 
         .info-label {
@@ -1127,12 +1195,13 @@
             }
 
             .controls-info {
-                width: 280px;
+                width: 100%;
+                max-width: 300px;
                 margin-bottom: 10px;
             }
 
             .controls-info > div {
-                min-width: 70px;
+                flex: 1;
             }
 
             .info-label {
@@ -1490,12 +1559,13 @@
             .controls-info {
                 flex-direction: row;
                 width: auto;
+                max-width: none;
                 gap: 25px;
                 margin-bottom: 0;
             }
 
             .controls-info > div {
-                min-width: auto;
+                flex: 0 0 auto;
             }
 
             .info-label {
@@ -1683,17 +1753,6 @@
             }
         }
 
-        /* Payline highlight */
-        .payline-highlight {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 50;
-        }
-
         /* Loading screen */
         #loading-screen {
             position: fixed;
@@ -1706,6 +1765,13 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            z-index: 9999;
+            opacity: 1;
+            transition: opacity 0.3s ease-out;
+        }
+        #loading-screen.fade-out {
+            opacity: 0;
+            pointer-events: none;
             z-index: 9999;
         }
 
@@ -1756,12 +1822,17 @@
 <body>
     <!-- Loading Screen -->
     <div id="loading-screen">
-        <div class="loader"></div>
-        <p>Loading The Munchies...</p>
+        <img src="./assets/logo.webp" alt="Grease Burger" style="width:300px;max-width:60vw;margin-bottom:30px;">
+        <div style="width:250px;height:6px;background:#333;border-radius:3px;overflow:hidden;">
+            <div id="load-bar" style="width:0%;height:100%;background:#c0392b;border-radius:3px;transition:width 0.3s;"></div>
+        </div>
+
+        <p style="color:#aaa;font-size:13px;margin-top:25px;max-width:300px;text-align:center;line-height:1.5;">You order the perfect meal at 2AM...<br>but the kitchen has other plans. 🍔😭</p>
+        <p id="load-text" style="color:#888;font-size:14px;margin-top:15px;">Loading... 0%</p>
     </div>
 
     <!-- Background Video -->
-    <video id="bg-video" autoplay loop muted playsinline poster="./assets/bg_main.webp?v=1">
+    <video id="bg-video" autoplay loop muted playsinline preload="none" poster="./assets/bg_main.webp?v=1">
         <source src="./assets/bck_small.mp4" type="video/mp4">
     </video>
 
@@ -1893,45 +1964,24 @@
 
         const SYMBOLS = ['burger', 'nachos', 'milkshake', 'taco', 'nuggets', 'onionrings', 'fries', 'hotdog', 'wild', 'scatter'];
 
+        // 729 WAYS TO WIN paytable (pays per way)
         const PAYTABLE = {
-            burger:     { 3: 5,   4: 15,  5: 50,  6: 150 },
-            nachos:     { 3: 4,   4: 12,  5: 40,  6: 120 },
-            milkshake:  { 3: 3,   4: 10,  5: 30,  6: 100 },
-            taco:       { 3: 2,   4: 8,   5: 20,  6: 60 },
-            nuggets:    { 3: 2,   4: 6,   5: 15,  6: 50 },
-            onionrings: { 3: 1.5, 4: 5,   5: 12,  6: 40 },
-            fries:      { 3: 1,   4: 4,   5: 10,  6: 30 },
-            hotdog:     { 3: 1,   4: 3,   5: 8,   6: 25 }
+            burger:     { 3: 0.6, 4: 1.5, 5: 5,   6: 25 },
+            nachos:     { 3: 0.5, 4: 1.2, 5: 4,   6: 20 },
+            milkshake:  { 3: 0.5, 4: 1.2, 5: 4,   6: 20 },
+            taco:       { 3: 0.3, 4: 0.8, 5: 2.5, 6: 12 },
+            nuggets:    { 3: 0.3, 4: 0.8, 5: 2.5, 6: 12 },
+            onionrings: { 3: 0.2, 4: 0.5, 5: 1.5, 6: 8 },
+            fries:      { 3: 0.2, 4: 0.4, 5: 1,   6: 5 },
+            hotdog:     { 3: 0.2, 4: 0.4, 5: 1,   6: 5 },
+            wild:       { 3: 1,   4: 3,   5: 10,  6: 50 }
         };
 
         const SCATTER_PAYS = { 3: 10, 4: 15, 5: 20, 6: 25 };
 
-        // 20 paylines for 6x3 grid
-        const PAYLINES = [
-            [1, 1, 1, 1, 1, 1], // Middle row
-            [0, 0, 0, 0, 0, 0], // Top row
-            [2, 2, 2, 2, 2, 2], // Bottom row
-            [0, 1, 2, 2, 1, 0], // V shape
-            [2, 1, 0, 0, 1, 2], // Inverted V
-            [0, 0, 1, 1, 2, 2], // Descending steps
-            [2, 2, 1, 1, 0, 0], // Ascending steps
-            [1, 0, 0, 0, 0, 1], // Top dip
-            [1, 2, 2, 2, 2, 1], // Bottom dip
-            [0, 1, 1, 1, 1, 0], // Slight dip top
-            [2, 1, 1, 1, 1, 2], // Slight dip bottom
-            [1, 0, 1, 1, 0, 1], // Zigzag top
-            [1, 2, 1, 1, 2, 1], // Zigzag bottom
-            [0, 1, 0, 0, 1, 0], // Small waves top
-            [2, 1, 2, 2, 1, 2], // Small waves bottom
-            [0, 2, 0, 2, 0, 2], // Alternating top-bottom
-            [2, 0, 2, 0, 2, 0], // Alternating bottom-top
-            [1, 0, 2, 2, 0, 1], // Wide V
-            [1, 2, 0, 0, 2, 1], // Wide inverted V
-            [0, 1, 2, 0, 1, 2]  // Diagonal wave
-        ];
-
         // ==================== GAME STATE ====================
         let gameState = {
+            sessionId: Math.random().toString(36).substr(2, 9),
             balance: CONFIG.STARTING_BALANCE,
             betIndex: CONFIG.DEFAULT_BET_INDEX,
             isSpinning: false,
@@ -1947,6 +1997,17 @@
             debugForceScatters: false // Debug: force 3 scatters on next spin
         };
 
+        // ==================== ANALYTICS ====================
+        function trackEvent(eventType, data) {
+            try {
+                fetch('/api/track', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ eventType, data })
+                }).catch(() => {});
+            } catch(e) {}
+        }
+
         // ==================== AUDIO ====================
         const audio = {
             music_base: null,
@@ -1954,7 +2015,8 @@
             sfx_win: null,
             sfx_scatter: null,
             sfx_fs_trigger: null,
-            sfx_button: null
+            sfx_button: null,
+            sfx_bigwin: null
         };
 
         function initAudio() {
@@ -1977,6 +2039,10 @@
             // Spin sound
             audio.sfx_spin = new Audio('./assets/spin.mp3?v=1');
             audio.sfx_spin.volume = 0.3;
+
+            // Big win sound (deep fryer loop)
+            audio.sfx_bigwin = new Audio('./assets/sfx_spin.mp3?v=1');
+            audio.sfx_bigwin.volume = 0.3;
         }
 
         function playSound(soundName) {
@@ -2021,77 +2087,75 @@
         }
 
         // ==================== IMAGE PRELOADING ====================
-        const imageCache = {};
-
         function preloadImages() {
             return new Promise((resolve) => {
-                // Images with default version 1
-                const imagesV1 = [
-                    'bg_main.webp',
-                    'stonertray.webp',
-                    'kitchentray.webp',
-                    'fs_pick_order.webp',
-                    'fs_pick_kitchen.webp',
-                    'win_big_text.webp',
-                    'win_mega_text.webp',
-                    'win_epic_text.webp',
-                    'sprite_fry.webp',
-                    'sprite_ketchup.webp',
-                    'sprite_mustard.webp',
-                    'sprite_napkin.webp',
-                    'sprite_nugget.webp',
-                    'sprite_onionring.webp'
-                ];
+                const loadBar = document.getElementById('load-bar');
+                const loadText = document.getElementById('load-text');
 
-                // Images with version 2 (updated banners)
-                const imagesV2 = [
-                    'order.webp',
-                    'kitchen.webp'
-                ];
+                const allImages = [];
 
-                const images = imagesV1.map(f => ({ file: f, version: 1 }))
-                    .concat(imagesV2.map(f => ({ file: f, version: 2 })));
-
-                // Add all symbol images (with versions)
-                const symbolImages = [];
+                // All symbol variants - versions MUST match createReelColumn exactly
+                const symbols = ['burger', 'fries', 'nachos', 'taco', 'nuggets', 'onionrings', 'hotdog', 'milkshake', 'wild'];
                 const updatedSymbolsV2 = ['fries', 'nuggets', 'nachos'];
                 const updatedSymbolsV3 = ['milkshake'];
-                SYMBOLS.forEach(sym => {
-                    if (sym === 'scatter') {
-                        symbolImages.push({ file: 'sym_scatter.png', version: 1 });
-                    } else {
-                        // Updated symbols use v=2 or v=3
-                        const version = updatedSymbolsV3.includes(sym) ? 3 : updatedSymbolsV2.includes(sym) ? 2 : 1;
-                        symbolImages.push({ file: `sym_${sym}_order.webp`, version: version });
-                        // burger_kitchen updated to v=3
-                        const kitchenVersion = sym === 'burger' ? 3 : version;
-                        symbolImages.push({ file: `sym_${sym}_kitchen.webp`, version: kitchenVersion });
-                    }
+
+                symbols.forEach(sym => {
+                    // Order variant version
+                    let orderV = updatedSymbolsV3.includes(sym) ? 3 : updatedSymbolsV2.includes(sym) ? 2 : 1;
+                    allImages.push('./assets/sym_' + sym + '_order.webp?v=' + orderV);
+
+                    // Kitchen variant version
+                    let kitchenV = updatedSymbolsV3.includes(sym) ? 3 : updatedSymbolsV2.includes(sym) ? 2 : 1;
+                    if (sym === 'burger') kitchenV = 3; // burger_kitchen is v3
+                    allImages.push('./assets/sym_' + sym + '_kitchen.webp?v=' + kitchenV);
                 });
 
+                // Scatter uses .png not .webp
+                allImages.push('./assets/sym_scatter.webp?v=2');
+
+                // Trays
+                allImages.push('./assets/stonertray.webp?v=1');
+                allImages.push('./assets/kitchentray.webp?v=1');
+
+                // UI images
+                allImages.push('./assets/logo.webp?v=1');
+                allImages.push('./assets/bg_main.webp?v=1');
+                allImages.push('./assets/order.webp?v=2');
+                allImages.push('./assets/kitchen.webp?v=2');
+
                 let loaded = 0;
-                const allImages = images.concat(symbolImages);
                 const total = allImages.length;
 
-                allImages.forEach(({ file, version }) => {
+                function onLoad() {
+                    loaded++;
+                    const pct = Math.round((loaded / total) * 100);
+                    if (loadBar) loadBar.style.width = pct + '%';
+                    if (loadText) loadText.textContent = 'Loading... ' + pct + '%';
+                    if (loaded >= total) {
+                        resolve();
+                    }
+                }
+
+                allImages.forEach(src => {
                     const img = new Image();
-                    img.onload = img.onerror = () => {
-                        loaded++;
-                        imageCache[file] = img;
-                        if (loaded >= total) {
-                            resolve();
-                        }
-                    };
-                    img.src = `./assets/${file}?v=${version}`;
+                    img.onload = onLoad;
+                    img.onerror = onLoad;
+                    img.src = src;
                 });
             });
         }
 
         // ==================== GRID RENDERING ====================
+        // Mobile detection - check once at load
+        const isMobile = window.matchMedia('(max-width: 768px)').matches || 'ontouchstart' in window;
+
         // Number of symbols in each reel strip
-        // Minimal: 6 symbols (3 visible + 3 buffer for seamless loop)
-        const isMobile = window.innerWidth <= 768;
+        // Mobile: 6 symbols (3 visible + 3 buffer for seamless CSS loop)
+        // Desktop: 6 symbols (same, works well)
         const STRIP_LENGTH = 6;
+
+        // Cached cell dimensions - computed once after grid creation, NEVER during animation
+        let cachedCellDimensions = null;
 
         function createGrid() {
             const gridWrapper = document.getElementById('grid-wrapper');
@@ -2144,6 +2208,8 @@
         }
 
         // Helper to create a single reel column with its strip
+        // Creates layers for BOTH variants (order + kitchen) so free spins mode works
+        // Background-image is set on EVERY layer at creation - only opacity toggles later
         function createReelColumn(col, glowClass) {
             const reelColumn = document.createElement('div');
             reelColumn.className = 'reel-column';
@@ -2153,6 +2219,19 @@
             reelStrip.className = 'reel-strip';
             reelStrip.id = `strip-${col}`;
 
+            // Tray and overlay for this column
+            const darkOverlay = `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4))`;
+            const trayUrl = col < 3
+                ? `url('./assets/stonertray.webp?v=1')`
+                : `url('./assets/kitchentray.webp?v=1')`;
+
+            // Version numbers for symbols
+            const updatedSymbolsV2 = ['fries', 'nuggets', 'nachos'];
+            const updatedSymbolsV3 = ['milkshake'];
+
+            // Both variants needed for free spins mode
+            const variants = ['order', 'kitchen'];
+
             // Create symbol cells in the strip
             for (let i = 0; i < STRIP_LENGTH; i++) {
                 const cell = document.createElement('div');
@@ -2160,6 +2239,37 @@
                 cell.dataset.col = col;
                 cell.dataset.stripIndex = i;
                 cell.id = `cell-${col}-${i}`;
+
+                // Pre-create symbol layers for BOTH variants (19 layers per cell)
+                const foodSymbols = SYMBOLS.filter(s => s !== 'scatter');
+
+                for (const variant of variants) {
+                    for (const symbol of foodSymbols) {
+                        const layer = document.createElement('div');
+                        layer.className = 'symbol-layer';
+                        layer.dataset.symbol = symbol;
+                        layer.dataset.variant = variant;
+
+                        // Set background-image at creation time - NEVER changes
+                        let version = updatedSymbolsV3.includes(symbol) ? 3 : updatedSymbolsV2.includes(symbol) ? 2 : 1;
+                        if (symbol === 'burger' && variant === 'kitchen') version = 3;
+                        const symbolUrl = `url('./assets/sym_${symbol}_${variant}.webp?v=${version}')`;
+                        layer.style.backgroundImage = `${symbolUrl}, ${darkOverlay}, ${trayUrl}`;
+                        layer.style.backgroundSize = (symbol === 'burger' && variant === 'order') ? '75%, 100%, 100%' : '82%, 100%, 100%';
+
+                        cell.appendChild(layer);
+                    }
+                }
+
+                // Create scatter layer (no variant)
+                const scatterLayer = document.createElement('div');
+                scatterLayer.className = 'symbol-layer';
+                scatterLayer.dataset.symbol = 'scatter';
+                scatterLayer.dataset.variant = 'none';
+                scatterLayer.style.backgroundImage = `url('./assets/sym_scatter.webp?v=2'), ${darkOverlay}, ${trayUrl}`;
+                scatterLayer.style.backgroundSize = '82%, 100%, 100%';
+                cell.appendChild(scatterLayer);
+
                 reelStrip.appendChild(cell);
             }
 
@@ -2167,53 +2277,28 @@
             return reelColumn;
         }
 
-        function getSymbolImage(symbol, col) {
-            let symbolUrl;
-            if (symbol === 'scatter') {
-                symbolUrl = `url('./assets/sym_scatter.png?v=1')`;
-            } else {
-                // During free spins, use the selected mode for all columns
-                let variant;
-                if (gameState.freeSpins.active && gameState.freeSpins.mode) {
-                    variant = gameState.freeSpins.mode;
-                } else {
-                    // Normal play: left 3 cols = order, right 3 cols = kitchen
-                    variant = col < 3 ? 'order' : 'kitchen';
-                }
-                // Updated symbols use v=2 or v=3
-                const updatedSymbolsV2 = ['fries', 'nuggets', 'nachos'];
-                const updatedSymbolsV3 = ['milkshake'];
-                let version = updatedSymbolsV3.includes(symbol) ? 3 : updatedSymbolsV2.includes(symbol) ? 2 : 1;
-                // burger_kitchen updated to v=3
-                if (symbol === 'burger' && variant === 'kitchen') version = 3;
-                symbolUrl = `url('./assets/sym_${symbol}_${variant}.webp?v=${version}')`;
+        // Get the current variant for a column (considers free spins mode)
+        function getCurrentVariant(col) {
+            if (gameState.freeSpins.active && gameState.freeSpins.mode) {
+                return gameState.freeSpins.mode;
             }
-
-            // Dark overlay to mute the tray (40% black)
-            const darkOverlay = `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4))`;
-
-            // Get tray background based on column
-            const trayUrl = col < 3
-                ? `url('./assets/stonertray.webp?v=1')`
-                : `url('./assets/kitchentray.webp?v=1')`;
-
-            // Return all three layers: symbol on top, dark overlay in middle, tray at bottom
-            return `${symbolUrl}, ${darkOverlay}, ${trayUrl}`;
+            return col < 3 ? 'order' : 'kitchen';
         }
 
-        // Get symbol-specific background size
-        function getSymbolSize(symbol, col) {
-            const variant = col < 3 ? 'order' : 'kitchen';
-            if (symbol === 'burger' && variant === 'order') {
-                return '75%, 100%, 100%';
-            }
-            return '82%, 100%, 100%';
-        }
-
-        // Set a cell's symbol image
+        // Set a cell's symbol by toggling opacity via .active class
+        // Background-images are set at creation time and NEVER change - only opacity toggles
         function setCellSymbol(cell, symbol, col) {
-            cell.style.backgroundImage = getSymbolImage(symbol, col);
-            cell.style.backgroundSize = getSymbolSize(symbol, col);
+            const variant = symbol === 'scatter' ? 'none' : getCurrentVariant(col);
+            const layers = cell.querySelectorAll('.symbol-layer');
+
+            for (const layer of layers) {
+                if (layer.dataset.symbol === symbol && layer.dataset.variant === variant) {
+                    layer.classList.add('active');
+                } else {
+                    layer.classList.remove('active');
+                }
+            }
+
             cell.dataset.symbol = symbol;
         }
 
@@ -2258,15 +2343,25 @@
             }
         }
 
-        // Get current cell height and gap from CSS
+        // Get current cell height and gap from CSS - uses cache to avoid DOM reads during animation
         function getCellDimensions() {
+            if (cachedCellDimensions) {
+                return cachedCellDimensions;
+            }
             const cell = document.querySelector('.symbol-cell');
             const styles = getComputedStyle(cell);
             const height = parseFloat(styles.height);
             // Get gap from reel-strip (where symbols are stacked vertically)
             const strip = document.querySelector('.reel-strip');
             const gap = strip ? parseFloat(getComputedStyle(strip).gap) || 4 : 4;
-            return { height, gap };
+            cachedCellDimensions = { height, gap };
+            return cachedCellDimensions;
+        }
+
+        // Recompute cell dimensions on resize (but NOT during animation)
+        function updateCellDimensionsCache() {
+            cachedCellDimensions = null;
+            getCellDimensions();
         }
 
         // ==================== MOCK SPIN LOGIC ====================
@@ -2292,20 +2387,18 @@
             const roll = Math.random() * 100;
 
             let outcomeType;
-            if (roll < 52) {
-                outcomeType = 'none';        // 52% no win
-            } else if (roll < 82) {
-                outcomeType = 'small';       // 30% small win (1-5x)
-            } else if (roll < 87) {
-                outcomeType = 'medium';      // 5% medium win (5-14x)
-            } else if (roll < 91.5) {
-                outcomeType = 'big';         // 4.5% big win (15-29x)
-            } else if (roll < 93.5) {
-                outcomeType = 'mega';        // 2% mega win (30-49x)
-            } else if (roll < 94.5) {
-                outcomeType = 'epic';        // 1% epic win (50x+)
+            if (roll < 55) {
+                outcomeType = 'none';        // 55% no win
+            } else if (roll < 83) {
+                outcomeType = 'small';       // 28% small win (1-5x)
+            } else if (roll < 91) {
+                outcomeType = 'medium';      // 8% medium win (5-14x)
+            } else if (roll < 96) {
+                outcomeType = 'big';         // 5% big win (15-29x)
+            } else if (roll < 98.5) {
+                outcomeType = 'mega';        // 2.5% mega win (30-49x)
             } else {
-                outcomeType = 'none';        // Remaining goes to no-win
+                outcomeType = 'epic';        // 1.5% epic win (50x+)
             }
 
             // Initialize grid with random food symbols
@@ -2316,23 +2409,20 @@
                 }
             }
 
-            // Place win based on outcome type
+            // Place win based on outcome type (ways-to-win: place on random row each reel)
             if (outcomeType !== 'none') {
-                const paylineIndex = Math.floor(Math.random() * PAYLINES.length);
-                const payline = PAYLINES[paylineIndex];
-
                 let winSymbol, winLength;
 
                 if (outcomeType === 'small') {
-                    // 3-of-kind with any symbol = 1-5x
+                    // 3-of-kind with any symbol
                     winSymbol = foodSymbols[Math.floor(Math.random() * foodSymbols.length)];
                     winLength = 3;
                 } else if (outcomeType === 'medium') {
-                    // 4-of-kind with low/mid symbols = 3-8x, or 3-of-kind high = 3-5x
+                    // 4-of-kind with low/mid symbols
                     winSymbol = [...lowSymbols, ...midSymbols][Math.floor(Math.random() * 5)];
                     winLength = 4;
                 } else if (outcomeType === 'big') {
-                    // 4-of-kind with high symbol (15x) or 5-of-kind with mid (15-20x)
+                    // 4-of-kind with high symbol or 5-of-kind with mid
                     if (Math.random() < 0.5) {
                         winSymbol = highSymbols[Math.floor(Math.random() * highSymbols.length)];
                         winLength = 4;
@@ -2341,25 +2431,25 @@
                         winLength = 5;
                     }
                 } else if (outcomeType === 'mega') {
-                    // 5-of-kind with high symbol (30-50x)
+                    // 5-of-kind with high symbol
                     winSymbol = highSymbols[Math.floor(Math.random() * highSymbols.length)];
                     winLength = 5;
                 } else if (outcomeType === 'epic') {
-                    // 6-of-kind with high symbol (100-150x) or 5-of-kind burger (50x)
+                    // 6-of-kind with high symbol or 5-of-kind burger
                     winSymbol = highSymbols[Math.floor(Math.random() * 2)]; // burger or nachos
-                    winLength = Math.random() < 0.3 ? 6 : 5; // 30% chance of 6-of-kind
-                    if (winLength === 5) winSymbol = 'burger'; // burger 5-of-kind = 50x
+                    winLength = Math.random() < 0.3 ? 6 : 5;
+                    if (winLength === 5) winSymbol = 'burger';
                 }
 
-                // Place winning symbols on the payline
+                // Place winning symbols on random row each reel (ways-to-win pattern)
                 for (let col = 0; col < winLength && col < CONFIG.REELS; col++) {
-                    const row = payline[col];
+                    const row = Math.floor(Math.random() * CONFIG.ROWS);
                     grid[col][row] = winSymbol;
                 }
             }
 
             // Scatter placement: ~1% chance per cell (roughly every 50-60 spins for 3+ scatters)
-            const scatterChance = 0.01;
+            const scatterChance = gameState.freeSpins.active ? 0.005 : 0.02;
             for (let col = 0; col < CONFIG.REELS; col++) {
                 for (let row = 0; row < CONFIG.ROWS; row++) {
                     if (Math.random() < scatterChance) {
@@ -2410,17 +2500,17 @@
             return grid;
         }
 
-        // ==================== WIN EVALUATION ====================
+        // ==================== WIN EVALUATION (729 WAYS TO WIN) ====================
         function evaluateWins() {
             const results = {
-                paylineWins: [],
+                waysWins: [],
                 scatterWin: null,
                 totalWin: 0
             };
 
             const bet = CONFIG.BET_LEVELS[gameState.betIndex];
 
-            // Count scatters
+            // Count scatters first
             let scatterCount = 0;
             const scatterPositions = [];
             for (let col = 0; col < CONFIG.REELS; col++) {
@@ -2443,55 +2533,60 @@
                 results.totalWin += results.scatterWin.win;
             }
 
-            // Check each payline
-            PAYLINES.forEach((payline, index) => {
-                const lineSymbols = payline.map((row, col) => gameState.grid[col][row]);
+            // Ways-to-win evaluation: check each paying symbol
+            const payingSymbols = Object.keys(PAYTABLE);
 
-                // Get first non-wild symbol
-                let matchSymbol = null;
-                for (const sym of lineSymbols) {
-                    if (sym !== 'wild' && sym !== 'scatter') {
-                        matchSymbol = sym;
-                        break;
-                    }
-                }
-
-                if (!matchSymbol) return; // All wilds or scatters, no win
-
-                // Count matching symbols from left
-                let matchCount = 0;
-                const winningPositions = [];
+            for (const symbol of payingSymbols) {
+                // Count matches on each reel from left (including wilds)
+                const reelMatches = [];
+                const positions = [];
 
                 for (let col = 0; col < CONFIG.REELS; col++) {
-                    const sym = lineSymbols[col];
-                    if (sym === matchSymbol || sym === 'wild') {
-                        matchCount++;
-                        winningPositions.push({ col, row: payline[col] });
-                    } else {
+                    const matchingRows = [];
+                    for (let row = 0; row < CONFIG.ROWS; row++) {
+                        const cellSymbol = gameState.grid[col][row];
+                        if (cellSymbol === symbol || cellSymbol === 'wild') {
+                            matchingRows.push(row);
+                        }
+                    }
+
+                    if (matchingRows.length === 0) {
+                        // Chain breaks - no matches on this reel
                         break;
                     }
+
+                    reelMatches.push(matchingRows);
+                    matchingRows.forEach(row => positions.push({ col, row }));
                 }
 
-                if (matchCount >= 3 && PAYTABLE[matchSymbol]) {
-                    const multiplier = PAYTABLE[matchSymbol][matchCount] || 0;
-                    let winAmount = bet * multiplier;
+                const matchLength = reelMatches.length;
+
+                if (matchLength >= 3 && PAYTABLE[symbol][matchLength]) {
+                    // Calculate number of ways (product of matches per reel)
+                    const waysPerReel = reelMatches.map(rows => rows.length);
+                    const ways = waysPerReel.reduce((acc, count) => acc * count, 1);
+                    const multiplier = PAYTABLE[symbol][matchLength];
+                    let winAmount = bet * multiplier * ways;
 
                     // Apply x3 multiplier during "kitchen" free spins mode
                     if (gameState.freeSpins.active && gameState.freeSpins.mode === 'kitchen') {
                         winAmount *= 3;
                     }
 
-                    results.paylineWins.push({
-                        paylineIndex: index,
-                        symbol: matchSymbol,
-                        count: matchCount,
-                        multiplier: multiplier,
+                    // DEBUG: Verify win calculation
+                    console.log(`WIN: ${symbol} x${matchLength} | ways per reel: [${waysPerReel.join(', ')}] | total ways: ${ways} | multiplier: ${multiplier} | win: $${winAmount.toFixed(2)}`);
+
+                    results.waysWins.push({
+                        symbol,
+                        count: matchLength,
+                        ways,
+                        multiplier,
                         win: winAmount,
-                        positions: winningPositions
+                        positions
                     });
                     results.totalWin += winAmount;
                 }
-            });
+            }
 
             if (CONFIG.DEBUG) {
                 console.log('Win evaluation:', results);
@@ -2582,15 +2677,16 @@
                     // Stop CSS animation
                     strip.classList.remove('spinning');
 
-                    // Start from a point above and transition down to 0
-                    strip.style.transform = `translate3d(0, ${-2 * cellStep}px, 0)`;
-
-                    // Force reflow to ensure transform is applied before transition
-                    strip.offsetHeight;
-
-                    // Add transition class and animate to final position
-                    strip.classList.add('stopping');
-                    strip.style.transform = 'translate3d(0, 0, 0)';
+                    // Use requestAnimationFrame to batch DOM writes and avoid forced reflow
+                    // First frame: set starting position
+                    requestAnimationFrame(() => {
+                        strip.style.transform = `translate3d(0, ${-2 * cellStep}px, 0)`;
+                        // Second frame: add transition and animate to final position
+                        requestAnimationFrame(() => {
+                            strip.classList.add('stopping');
+                            strip.style.transform = 'translate3d(0, 0, 0)';
+                        });
+                    });
 
                     // After transition completes, add bounce
                     setTimeout(() => {
@@ -2684,14 +2780,19 @@
 
             if (!winType) return;
 
-            // Play spin sound for big win celebration
-            if (!gameState.sfxMuted && audio.sfx_spin) {
-                const originalVolume = audio.sfx_spin.volume;
-                audio.sfx_spin.volume = 0.3;
-                audio.sfx_spin.currentTime = 0;
-                audio.sfx_spin.play().catch(() => {});
-                // Restore volume after sound plays
-                setTimeout(() => { audio.sfx_spin.volume = originalVolume; }, 1000);
+            // Track big win
+            trackEvent('bigWin', {
+                sessionId: gameState.sessionId,
+                tier: winType,
+                amount: totalWin
+            });
+
+            // Play looping deep fryer sound for big win celebration
+            if (!gameState.sfxMuted && audio.sfx_bigwin) {
+                audio.sfx_bigwin.volume = 0.3;
+                audio.sfx_bigwin.currentTime = 0;
+                audio.sfx_bigwin.loop = true;
+                audio.sfx_bigwin.play().catch(() => {});
             }
 
             const celebration = document.getElementById('win-celebration');
@@ -2710,16 +2811,19 @@
             // Hide landscape logo during celebration
             if (landscapeLogo) landscapeLogo.style.display = 'none';
 
-            // Screen shake
-            if (winType === 'epic') {
-                container.classList.add('screen-shake-heavy');
-            } else {
-                container.classList.add('screen-shake');
+            // Screen shake (disabled on mobile - causes full page repaints)
+            if (!isMobile) {
+                if (winType === 'epic') {
+                    container.classList.add('screen-shake-heavy');
+                } else {
+                    container.classList.add('screen-shake');
+                }
             }
 
-            // Spawn flying sprites
+            // Spawn flying sprites (max 4 on mobile for performance)
             const sprites = ['sprite_fry.webp', 'sprite_onionring.webp', 'sprite_nugget.webp', 'sprite_ketchup.webp', 'sprite_mustard.webp', 'sprite_napkin.webp'];
-            const spriteCount = winType === 'epic' ? 30 : winType === 'mega' ? 20 : 10;
+            let spriteCount = winType === 'epic' ? 30 : winType === 'mega' ? 20 : 10;
+            if (isMobile) spriteCount = Math.min(spriteCount, 4);
 
             for (let i = 0; i < spriteCount; i++) {
                 setTimeout(() => {
@@ -2738,6 +2842,13 @@
 
                     // Clear auto-dismiss timeout
                     if (autoTimeout) clearTimeout(autoTimeout);
+
+                    // Stop the looping big win sound immediately
+                    if (audio.sfx_bigwin) {
+                        audio.sfx_bigwin.pause();
+                        audio.sfx_bigwin.currentTime = 0;
+                        audio.sfx_bigwin.loop = false;
+                    }
 
                     // Remove ALL event listeners
                     document.removeEventListener('click', dismissWin, true);
@@ -2879,7 +2990,7 @@
 
                     // Highlight wins
                     const allPositions = [];
-                    results.paylineWins.forEach(pw => allPositions.push(...pw.positions));
+                    results.waysWins.forEach(ww => allPositions.push(...ww.positions));
                     if (results.scatterWin) allPositions.push(...results.scatterWin.positions);
                     highlightWinningCells(allPositions);
 
@@ -2975,6 +3086,19 @@
             gameState.balance += gameState.freeSpins.totalWin;
             updateUI();
 
+            // Save state before resetting
+            const totalFreeSpinsWin = gameState.freeSpins.totalWin;
+            const freeSpinsMode = gameState.freeSpins.mode;
+            const totalSpinsPlayed = gameState.freeSpins.total;
+
+            // Track free spins end
+            trackEvent('freeSpins', {
+                sessionId: gameState.sessionId,
+                mode: freeSpinsMode,
+                totalWin: totalFreeSpinsWin,
+                spinsCount: totalSpinsPlayed
+            });
+
             await new Promise(resolve => {
                 document.getElementById('fs-continue').onclick = () => {
                     playSound('sfx_button');
@@ -2983,6 +3107,9 @@
             });
 
             endScreen.classList.remove('active');
+
+            // Update WIN display to show total free spins win
+            document.getElementById('win-display').textContent = totalFreeSpinsWin.toFixed(2);
 
             // Restore landscape logo
             const landscapeLogo = document.getElementById('landscape-logo');
@@ -3028,7 +3155,7 @@
             if (results.totalWin > 0) {
                 // Highlight winning positions
                 const allPositions = [];
-                results.paylineWins.forEach(pw => allPositions.push(...pw.positions));
+                results.waysWins.forEach(ww => allPositions.push(...ww.positions));
                 if (results.scatterWin) allPositions.push(...results.scatterWin.positions);
                 highlightWinningCells(allPositions);
 
@@ -3043,6 +3170,7 @@
                 await showWinCelebration(results.totalWin);
 
                 await new Promise(resolve => setTimeout(resolve, CONFIG.WIN_DISPLAY_TIME));
+
                 clearWinningHighlights();
             }
 
@@ -3050,6 +3178,14 @@
             if (results.scatterWin && results.scatterWin.count >= 3) {
                 await triggerFreeSpins(results.scatterWin.count);
             }
+
+            // Track spin
+            trackEvent('spin', {
+                sessionId: gameState.sessionId,
+                bet: bet,
+                win: results.totalWin,
+                symbols: gameState.grid.map(col => col.slice(0, 3))
+            });
 
             gameState.isSpinning = false;
             document.getElementById('btn-spin').classList.remove('disabled');
@@ -3221,6 +3357,42 @@
                 console.log('Debug mode enabled');
             }
 
+            // Log DOM element count for performance debugging
+            const domCount = document.querySelectorAll('*').length;
+            console.log('Total DOM elements:', domCount);
+            if (domCount > 500) {
+                console.warn('DOM element count is high (', domCount, ') - may cause mobile lag');
+            }
+
+            // On mobile: don't load the background video - use static poster image instead
+            // Video eats GPU resources needed for animations
+            if (isMobile) {
+                const video = document.getElementById('bg-video');
+                if (video) {
+                    // Create a static background div with the poster image BEFORE removing video
+                    const bgStatic = document.createElement('div');
+                    bgStatic.id = 'bg-static';
+                    bgStatic.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: -15%;
+                        width: 130%;
+                        height: 100%;
+                        background: url('./assets/bg_main.webp?v=1') 38% center / cover no-repeat;
+                        z-index: 0;
+                        pointer-events: none;
+                    `;
+                    video.parentNode.insertBefore(bgStatic, video);
+
+                    // Completely remove video element from DOM - not just hidden
+                    video.pause();
+                    video.removeAttribute('src');
+                    video.load();
+                    video.remove();
+                    console.log('Mobile: Removed video element, using static background');
+                }
+            }
+
             // Calculate mobile layout before creating grid
             calculateMobileLayout();
 
@@ -3241,21 +3413,83 @@
             // renderGrid fills visible cells and the rest of each strip
             renderGrid();
 
+            // Cache cell dimensions ONCE after grid is created (never during animation)
+            getCellDimensions();
+
+            // Update cache on resize (debounced, only when not spinning)
+            let resizeTimeout;
+            window.addEventListener('resize', () => {
+                if (!gameState.isSpinning) {
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(updateCellDimensionsCache, 200);
+                }
+            });
+
             updateUI();
             setupEventListeners();
 
-            // Hide loading screen
-            document.getElementById('loading-screen').style.display = 'none';
+            // Poll until all active symbol layers have their background-images painted
+            const loadingScreen = document.getElementById('loading-screen');
+            const loadText = document.getElementById('load-text');
+
+            await new Promise(resolve => {
+                const startTime = Date.now();
+                const maxWait = 8000; // 8 second maximum wait
+
+                function checkPainted() {
+                    const activeLayers = document.querySelectorAll('.symbol-layer.active');
+                    let paintedCount = 0;
+
+                    activeLayers.forEach(layer => {
+                        const bg = layer.style.backgroundImage;
+                        if (bg && bg !== 'none' && bg !== '') {
+                            paintedCount++;
+                        }
+                    });
+
+                    const elapsed = Date.now() - startTime;
+
+                    // Update loading text
+                    if (loadText) {
+                        loadText.textContent = `Preparing reels... ${paintedCount}/${activeLayers.length}`;
+                    }
+
+                    // Check if all painted OR max wait exceeded
+                    if (paintedCount >= activeLayers.length || elapsed >= maxWait) {
+                        // Wait 500ms more for browser to finish compositing
+                        setTimeout(resolve, 500);
+                    } else {
+                        // Keep polling
+                        requestAnimationFrame(checkPainted);
+                    }
+                }
+
+                // Start polling
+                requestAnimationFrame(checkPainted);
+            });
+
+            // Fade out loading screen over 300ms
+            loadingScreen.classList.add('fade-out');
+            await new Promise(r => setTimeout(r, 300));
+            loadingScreen.style.display = 'none';
 
             if (CONFIG.DEBUG) {
-                console.log('Game initialized');
-                console.log('Paylines:', PAYLINES);
+                console.log('Game initialized - 729 Ways To Win');
                 console.log('Paytable:', PAYTABLE);
             }
+
+            // Track page visit
+            trackEvent('visit', {
+                sessionId: gameState.sessionId,
+                userAgent: navigator.userAgent,
+                screenSize: window.innerWidth + 'x' + window.innerHeight,
+                referrer: document.referrer
+            });
         }
 
         // Start the game
         window.addEventListener('load', init);
     </script>
+<script src="./assets/paytable.js"></script>
 </body>
 </html>
